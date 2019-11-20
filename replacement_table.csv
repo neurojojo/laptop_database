@@ -1,0 +1,32 @@
+Original                                          ;Replacement
+Gi1 D2 ins4A Sulpiride No treat                   ;Gi1 D2 (1200 ng) ins4A No treat                  
+Gi1 D2 ins4A Sulpiride 1 uM Sulpiride             ;Gi1 D2 (1200 ng) ins4A Sulpiride             
+Gi1 D2 Quinpirole 200 ng D2,2400 ng Quinpirole    ;Gi1 D2 (2400 ng) Quinpirole
+Gi1 D2 No treat 200 ng D2,2400 ng No              ;Gi1 D2 (2400 ng) No treat            
+Gi1 D2 No treat                                   ;D2-Halo No treat                                  
+Gi1 D2 Quinpirole 10 uM Quinpirole                ;D2-Halo Quinpirole               
+Gi1 D2 ins4A No treat 1200 ng                     ;Gi1 D2 (1200 ng) ins4A No treat                     
+Gi1 D2 ins4A 300 ng and 10 uM Qunipirole          ;Gi1 D2 (300 ng) ins4A Quinpirole           
+Gi1 D2 ins4A 1200 ng ,1200 ng D2                  ;Gi1 D2 (1200 ng) ins4A No treat                 
+Gi1 D2 ins4A No treat 300 ng and                  ;Gi1 D2 (300 ng) ins4A No treat                 
+Gi1 D2 ins4A 1200 ng 10 uM Qunipirole             ;Gi1 D2 (1200 ng) ins4A Quinpirole             
+Gi1 D2 Quinpirole 10 uM Quinpirole                ;REMOVE             
+Gi1 Lacrotruncin 10 uM Lacrotruncin               ;Gi1 Latrunculin              
+Gs cyclodextrin No treat                          ;Gs No treat                         
+Gs cyclodextrin 10 mM beta                        ;Gs Cyclodextrin                     
+Gi1 No treat                                      ;Gi1 No treat                                     
+Gi1 D2 ins4A No treat 100 ng No                   ;Gi1 D2 (100 ng) ins4A No treat                   
+Gi1 D2 ins4A 100 ng Code                          ;Gi1 D2 ins4A (100 ng) REMOVE                   
+Gi1 D2 ins4A Quinpirole 100 ng 10 10 uM Quinpirole;Gi1 D2 (100 ng) ins4A Quinpirole 
+Gi1 D2 PTXR No treat                              ;REMOVE                        
+Gi1 D2 PTXR Quinpirole 10 uM Quinpirole           ;Gi1 D2 (1200 ng) Quinpirole          
+Gi1 D2 PTXR No treat                              ;REMOVE
+Gi1 D2 PTXR No treat                              ;Gi1 D2 (1200 ng) No treat                             
+Gi1 Quinpirole 10 uM Quinpirole                   ;Gi1 Quinpirole                            
+Gi1 No treat                                      ;Gi1 No treat                                     
+Myr Myr No treat 200 ng JF                        ;Myr No treat                       
+Myr Myr Quinpirole 200 ng JF 10 uM Quinpirole     ;Myr Quinpirole    
+Myr Myr No treat 200 ng JF                        ;Myr No treat                       
+Gi1 No treat                                      ;gamma2 No treat                                     
+Gi1 No treat                                      ;REMOVE
+Gi1 Quinpirole 10 uM Quinpirole                   ;gamma2 Quinpirole                  
