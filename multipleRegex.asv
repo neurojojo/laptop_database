@@ -6,15 +6,15 @@ function [hits,figname] = multipleRegex( cellarray, varargin )
         figname='all';
         return
     else
-        queries = varargin{1};
-        for i = 1:numel( queries )
+        queries = vararg
+        for i = 1:numel( varargin{1} )
 
-            figname = [figname, ' ', queries{i}];
-            if regexpi( queries{i}, 'not')
-                removeflag = regexpi(queries{i},'(?<=not\s).*','match');
+            figname = [figname, ' ', varargin{i}];
+            if regexpi( varargin{i}, 'not')
+                removeflag = regexpi(varargin{i},'(?<=not\s).*','match');
                 query = sprintf('^((?!%s).)*$', removeflag{1}); myre = @(x) numel( regexpi(x,query) ); 
             else
-                query = sprintf('%s',queries{i}); myre = @(x) numel( regexpi(x,query) ); 
+                query = sprintf('%s',varargin{i}); myre = @(x) numel( regexpi(x,query) ); 
             end
 
             hits = intersect( hits, find( cellfun( myre, cellarray ) > 0 ) );

@@ -136,47 +136,14 @@ remove_ends = 1;
 Quantity1 = 'Lifetime1';
 Quantity2 = 'Lifetime2';
 figdetails = 'Lifetime_xy_';
+xlims = [0, 100];
+ylims = [0, 100];
+sorting = [];
+%sorting = [3,1,2];
+colors = 'reds';
+query = 'Gi1 D2 Quin';
 newfig = 0;
-sorting = []; colors = 'tans'; query = {'Gi1 D2 ins4a','Sulpiride'};
 
-% Possible queries
-% sorting = [3,1,2]; colors = 'blues'; query = {'Gi1 D2 ins4a','not quinpirole','not sulpiride'}; %'Gi1 D2 ins4A Quinpirole'
-% 
-% sorting = [3,1,2]; colors = 'reds'; query = {'Gi1 D2 ins4a', 'quinpirole'}; %'Gi1 D2 ins4A Quinpirole'
-%
-% sorting = []; colors = 'tans'; query = {'Gi1 D2 ins4a','Sulpiride'};
 [Superclusters,figname] = multipleRegex( rc_obj.clustersTable.Clustertext, query );
 
 plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-%% Figure 1
-close all;
-
-sorting = [3,1,2]; colors = 'blues'; query = {'Gi1 D2 ins4a','not quinpirole','not sulpiride'}; %'Gi1 D2 ins4A Quinpirole'
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-sorting = [3,1,2]; colors = 'reds'; query = {'Gi1 D2 ins4a', 'quinpirole'}; %'Gi1 D2 ins4A Quinpirole'
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-sorting = []; colors = 'tans'; query = {'Gi1 D2 ins4a','Sulpiride'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-xlim([0,40]); ylim([0,80]);
-textToTop(gca);
-
-%% Figure 2
-close all;
-sorting = []; colors = 'blues'; query = {'2400 ng'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-sorting = []; colors = 'reds'; query = {'Gi','not D2','not Lat'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-
-%% Figure 3
-close all;
-sorting = []; colors = 'blues'; query = {'D2','1200 ng', 'no treat', 'not PTXR'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-sorting = []; colors = 'reds'; query = {'PTXR','1200 ng', 'no treat'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-

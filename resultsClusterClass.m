@@ -172,9 +172,9 @@ classdef resultsClusterClass < handle
             for i = obj.diffusionTable.AbsoluteIdxToSubfolders'
                 mynumel = @(x) numel(x{1});
                 
-                state1_tmp = findFoldersObj.hmmsegs.(sprintf('obj_%i',i)).brownianTable.State1(:,6);
-                state2_tmp = findFoldersObj.hmmsegs.(sprintf('obj_%i',i)).brownianTable.State2(:,6);
-                try 
+                try
+                    state1_tmp = findFoldersObj.hmmsegs.(sprintf('obj_%i',i)).brownianTable.State1(:,6);
+                    state2_tmp = findFoldersObj.hmmsegs.(sprintf('obj_%i',i)).brownianTable.State2(:,6); 
                     [state1_lts,state2_lts] = deal( table2array(rowfun( mynumel, state1_tmp )), table2array(rowfun( mynumel, state2_tmp )) );
                 catch
                     if or( numel( state1_tmp.hmm_xSeg ), numel( state2_tmp.hmm_xSeg ) ); occupancies(i,:) = [0,0]; end % If there are no 
@@ -389,6 +389,9 @@ classdef resultsClusterClass < handle
             
             obj.clustersTable = table( Superclusters, findFoldersObj.namesTable( IdxInNamesTable, : ).Shortname );
             obj.clustersTable.Properties.VariableNames = {'Supercluster','Shortname'};
+            
+            obj.subfoldersTable = join(  obj.subfoldersTable, obj.clustersTable , 'key', 'Supercluster' );
+            obj.subfoldersTable = obj.subfoldersTable(:,{'Supercluster','Shortname','AbsoluteIdxToSubfolders','Subcluster','Filename'});
         end
         
         function showTrees( obj )
