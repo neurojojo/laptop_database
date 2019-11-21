@@ -1,5 +1,5 @@
-cd('C:\MATLAB\databaseClasses')
-addpath('C:\MATLAB\databaseClasses')
+cd('C:\MATLAB\laptop_database\laptop_database')
+addpath('C:\MATLAB\laptop_database\laptop_database')
 
 %% Loading data (findFoldersClass)
 
@@ -12,31 +12,24 @@ tic; signeFolders = findFoldersClass(options); toc;
 
 %%
 
-tic; signeFolders.makeTrackObjs; toc;
-tic; signeFolders.makeSegObjs; toc;
+tic; signeFolders.makeTrackObjs; toc; % About 1 min
+tic; signeFolders.makeSegObjs; toc; % About 90 s (just took 300)
 % If clearing hmmsegs is necessary:
 signeFolders.hmmsegs = struct();
+tic; signeFolders.makeHMMSegObjs; toc; % About 160 s %
 
-tic; signeFolders.makeHMMSegObjs; toc;
+%%
 tic; signeFolders.switchHMMstates; toc;
+
 tic; signeFolders.patchTracks; toc; % Computes the total number of tracks in a segment (currently only for two state models)
 signeFolders.assignNames();
 % About 2 minutes per gigabyte
-%% Clear out Brownian Tables that aren't good
 
-objects_to_clear = readtable('objects_to_clear.csv');
-clearfxn = @(x,y) signeFolders.clearTables( x, y{1} );
-rowfun( clearfxn, objects_to_clear, 'NumOutputs', 0 )
+tic; signeFolders.saveTables(); toc;
 %% Restart rc_obj from here
 
-tic; rc_obj = resultsClusterClass( signeFolders ); toc;
+tic; rc_obj = resultsClusterClass( signeFolders ); toc; % 10 s
 
-rc_obj.newgroup([46,47])
-rc_obj.newgroup([34,35,36])
-rc_obj.newgroup([44,45])
-rc_obj.integrityCheck();
-
-%
 %% Handling text
 rc_obj.computeClusters( signeFolders );
 

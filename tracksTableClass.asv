@@ -62,7 +62,6 @@ classdef tracksTableClass < handle
             fprintf('Added metadata: %i\n',obj_idx);
             obj.metadata.Directory = Directory;
             fileStruct = struct();
-            obj.metadata.fileStruct = fileStruct;
             
             % Create a default table
             obj.tracksTable = table('Size',[0 numel(obj.varnames)],'VariableTypes',obj.vartypes,'VariableNames',obj.varnames);
@@ -100,17 +99,17 @@ classdef tracksTableClass < handle
             end
             
             if ~any( cell2mat(regexp( fieldnames(fileStruct), 'address.*')) )
-               obj.metadata.Comments = sprintf('No addresses of files were found. We searched:\n%s\n...Did you enter the directory correctly?', Directory); 
+               obj.metadata.Comments = (sprintf('No addresses of files were found. We searched:\n%s\n...Did you enter the directory correctly?', Directory)); 
                return
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%% TRACKING DATA PARSED HERE %%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            if ~fileStruct.Tracking & fileStruct.analysis_output; obj.metadata.Comments = sprintf('No tracking file located even though the HMM analysis file exists at:\n%s', fileStruct.address_analysis_output); 
+            if ~fileStruct.Tracking & fileStruct.analysis_output; warning( sprintf('No tracking file located even though the HMM analysis file exists at:\n%s', fileStruct.address_analysis_output) ); 
                 return
             end
-            if ~fileStruct.Tracking; obj.metadata.Comments =  sprintf('No tracking file located and no HMM analysis files located'); 
+            if ~fileStruct.Tracking; warning( sprintf('No tracking file located and no HMM analysis files located') ); 
                 return
             end
             
@@ -121,20 +120,19 @@ classdef tracksTableClass < handle
                     tracksFinal = load(fileStruct.address_Tracking,'tracksFinal'); 
                     TrackingFile = fileStruct.address_Tracking; 
                 catch
-                    obj.metadata.Comments = sprintf('Tracking file does not contain tracksFinal variable'); 
+                    warning('Tracking file does not contain tracksFinal variable'); 
                     return
                 end
                     fileStruct.N_Tracking = max(size(tracksFinal.tracksFinal)); 
                     TrackingFile = fileStruct.address_Tracking; 
             end
             % TrackingPst file is located
-            %if isfield(fileStruct,'TrackingPst'); 
-            %    try; 
-            %        tmp=whos('-file',fileStruct.address_TrackingPst,'tracksFinal','size'); fileStruct.N_TrackingPst = max(tmp.size); 
-            %    catch; 
-            %        obj.metadata.Comments = sprintf('Error in the tracking file'); return
-            %    end; 
-            %end;
+            if isfield(fileStruct,'TrackingPst'); 
+                try; tmp=whos('-file',fileStruct.address_TrackingPst,'tracksFinal','size'); fileStruct.N_TrackingPst = max(tmp.size); 
+                catch; 
+                    warning('Check the tracking file'); return
+                end; 
+            end;
             % DC-MSS segmentation file is located
             if fileStruct.results
                 tmp=whos('-file',fileStruct.address_results,'results','size'); 
@@ -147,14 +145,10 @@ classdef tracksTableClass < handle
                 end
             end
             
-            if isempty(TrackingFile); obj.metadata.Comments = sprintf('No suitable Tracking file located'); return; end
+            if isempty(TrackingFile); warning('No suitable Tracking file located'); return; end
             % Locate the Tracking file in the Files cell
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            % Using the tracksFinal variable, increase the table  %
-            % ONCE EVERYTHING HAS CHECKED OUT                     %
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
+            % Using the tracksFinal variable, increase the table
             Ntracks = max( size(tracksFinal.tracksFinal) );
             obj.tracksTable = table('Size',[Ntracks numel(obj.varnames)],'VariableTypes',obj.vartypes,'VariableNames',obj.varnames);
             obj.tracksTable.id = [1:Ntracks]';
@@ -164,7 +158,6 @@ classdef tracksTableClass < handle
             [obj.tracksTable.x, obj.tracksTable.y, obj.tracksTable.trackStart] = obj.extractPosition(tracksFinal.tracksFinal);
             obj.metadata.fileStruct = fileStruct;
             obj.metadata.Type = 'tracks';
-            obj.metadata.Comments='NA';
             
         end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -19,20 +19,38 @@ classdef segsTableClass < handle
         %%%%%%%%%%%%%%%%%%%%%%%%
         function obj = segsTableClass(varargin)
             
-            tracksTable = varargin{1};
-            fileStruct = tracksTable.metadata.fileStruct;
+            if strcmp( class(varargin{1}),'double')
+                obj.metadata.obj_idx = varargin{1};
+                obj.metadata.fileStruct = {};
+                obj.metadata.Type = 'tracks';
+                obj.metadata.Comments = 'Empty tracks';
+                obj.segsTable = table('Size',[0 numel(obj.varNames)],'VariableTypes',obj.varTypes,'VariableNames',obj.varNames);
+                return
+            end
             
+            tracksTableObj = varargin{1};
+            obj_idx = varargin{2};
+            fileStruct = tracksTableObj.metadata.fileStruct;
+            
+            % Create default metadata
+            obj.metadata = tracksTableObj.metadata;
+            obj.metadata.Type = 'segs';
+            obj.metadata.obj_idx = obj_idx;
+            
+            % Create a default table in case of premature return
+            obj.segsTable = table('Size',[0 numel(obj.varNames)],'VariableTypes',obj.varTypes,'VariableNames',obj.varNames);
+                
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%% SEGMENTATION DATA PARSED HERE %%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             % Locate the Segmentation file in the Files cell
             SegmentationFile = fileStruct.address_results;
-            if isempty( fileStruct.address_results ); error('No segmentation file found'); end
-            if isempty( whos('-file',SegmentationFile,'results') ); error('Tracking file does not contain results variable'); end
+            if isempty( fileStruct.address_results ); obj.metadata.Comments = sprintf('No segmentation file found'); return; end
+            if isempty( whos('-file',SegmentationFile,'results') ); obj.metadata.Comments = sprintf('Tracking file does not contain results variable'); return; end
+            
             % If all errors pass, load segmentation results file
             results_ = load(SegmentationFile,'results');
-            
             [trackIdx, segStart, segEnd, Nframes, segType] = obj.getSegments(results_.results);
             Nsegs = numel(trackIdx);
             
@@ -47,22 +65,21 @@ classdef segsTableClass < handle
             % obj.segsTable = obj.segsTable( isnan(obj.segsTable.segType)==0 ,:);
             % fprintf('Discarded %i NaN classified segments (out of total %i)\n', numel(trackIdx)-size(obj.segsTable,1), size(obj.segsTable,1) );
 
-            tmp_x = tracksTable.tracksTable(obj.segsTable.trackIdx,'x');
-            tmp_y = tracksTable.tracksTable(obj.segsTable.trackIdx,'y');
+            tmp_x = tracksTableObj.tracksTable(obj.segsTable.trackIdx,'x');
+            tmp_y = tracksTableObj.tracksTable(obj.segsTable.trackIdx,'y');
 
-            [obj.segsTable.x,obj.segsTable.y,obj.segsTable.trackStart] = deal( tracksTable.tracksTable( obj.segsTable.trackIdx, : ).x,...
-                tracksTable.tracksTable( obj.segsTable.trackIdx, : ).y,...
-                tracksTable.tracksTable( obj.segsTable.trackIdx, : ).trackStart);
+            [obj.segsTable.x,obj.segsTable.y,obj.segsTable.trackStart] = deal( tracksTableObj.tracksTable( obj.segsTable.trackIdx, : ).x,...
+                tracksTableObj.tracksTable( obj.segsTable.trackIdx, : ).y,...
+                tracksTableObj.tracksTable( obj.segsTable.trackIdx, : ).trackStart);
             
             fxn = @(segStart,segEnd,x,trackStart) { x{1}([segStart-trackStart+1:segEnd-trackStart+1]) };
             obj.segsTable.xSeg = table2array( rowfun(fxn, obj.segsTable(:, [3,4,7,10])) ); % rowfun outputs a table so to avoid creating a table in a table
             obj.segsTable.ySeg = table2array( rowfun(fxn, obj.segsTable(:, [3,4,8,10])) ); % use array2table
             obj.segsTable.nan = cellfun(@any, cellfun( @isnan, obj.segsTable.xSeg , 'UniformOutput', false));
-            obj.segsTable.abs_segStart = obj.segsTable.segStart + tracksTable.tracksTable.trackStart( obj.segsTable.trackIdx ) - 1;
+            obj.segsTable.abs_segStart = obj.segsTable.segStart + tracksTableObj.tracksTable.trackStart( obj.segsTable.trackIdx ) - 1;
             obj.segsTable = obj.segsTable(:,{'trackIdx','segIdx','abs_segStart','segStart','segType','xSeg','ySeg','nan'}); % Rearrange
+            obj.metadata.Comments = 'NA';
             
-            obj.metadata = tracksTable.metadata;
-            obj.metadata.Type = 'segs';
             
         end
         

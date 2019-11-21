@@ -107,8 +107,8 @@ classdef findFoldersClass < handle
                    obj.tracks.(sprintf('obj_%i',i)) = tmp_;
                    obj.metadata.logs.tracks{i} = sprintf('Success');
                catch
-                   obj.tracks.(sprintf('obj_%i',i)) = tracksTableClass(i);
                    obj.metadata.logs.tracks{i} = sprintf('%i failed: %s (%s)', i, lasterr, datetime()); % Tell on the failing file
+                   
                end
             end
         end
@@ -116,12 +116,13 @@ classdef findFoldersClass < handle
         function makeSegObjs(obj)
             for i = 1:size(obj.subfolderTable) % Leave where you left off power
                 try
-                    tmp_ = segsTableClass( obj.tracks.(sprintf('obj_%i',i)), i, obj.metadata.options.optional_args );
+                    tmp_ = segsTableClass( obj.tracks.(sprintf('obj_%i',i)), obj.metadata.options.optional_args );
                     obj.segs.(sprintf('obj_%i',i)) = tmp_;
                     obj.metadata.logs.segs{i} = sprintf('Success');
                 catch
-                    obj.segs.(sprintf('obj_%i',i)) = segsTableClass(i);
                     obj.metadata.logs.segs{i} = sprintf('%i failed: %s (%s)', i, lasterr, datetime()); % Tell on the failing file
+                    obj.segs.(sprintf('obj_%i',i)) = struct(); obj.segs.(sprintf('obj_%i',i)).metadata.obj_idx = i;
+                    obj.segs.(sprintf('obj_%i',i)).metadata.Type = 'Error';
                 end
             end
         end
@@ -130,11 +131,18 @@ classdef findFoldersClass < handle
             
             for i = 1:size(obj.subfolderTable) % Leave where you left off power
                 try
-                    tmp_ = brownianTableClass( obj.segs.(sprintf('obj_%i',i)), i, '' );
+                    tmp_ = brownianTableClass( obj.segs.(sprintf('obj_%i',i)), '' );
                     obj.hmmsegs.(sprintf('obj_%i',i)) = tmp_;
                     obj.metadata.logs.hmmsegs{i} = sprintf('Success for obj %i',i);
+                    fprintf('Success for obj %i',i);
                 catch
-                    obj.hmmsegs.(sprintf('obj_%i',i)) = brownianTableClass(i);
+                    obj.hmmsegs.(sprintf('obj_%i',i)) = struct(); 
+                    obj.hmmsegs.(sprintf('obj_%i',i)).metadata.obj_idx = i;
+                    obj.hmmsegs.(sprintf('obj_%i',i)) = brownianTableClass( i );
+                    for i = 1:obj.Nstates
+                        obj.hmmsegs.(sprintf('obj_%i',i)).brownianTable.(sprintf('State%i',i)) = table('Size',[1,7],'VariableTypes',repmat({'double'},1,7),'VariableNames',{'trackIdx','segIdx','hmmSegIdx','hmmSegStart','abs_hmmSegStart','hmm_xSeg','hmm_ySeg'});
+                    end
+                    obj.hmmsegs.(sprintf('obj_%i',i)).metadata.DiffCoeff = [0, 0];
                     obj.hmmsegs.(sprintf('obj_%i',i)).metadata.logs.hmmsegs{i} = sprintf('%i failed: %s (%s)', i, lasterr, datetime()); % Tell on the failing file
                     fprintf('Failure for obj %i',i);
                 end
@@ -152,19 +160,11 @@ classdef findFoldersClass < handle
             
         end
         
-        function clearTables(obj, varargin)
-            if nargin>2
-                if and( strcmp( class(varargin{1}), 'double'),strcmp( class(varargin{2}), 'char') )
-                    obj.hmmsegs.(sprintf('obj_%i',objToClear)).brownianTable = brownianTableClass( obj.hmmsegs.(sprintf('obj_%i',objToClear)), comment);
-                end
-            end
-            
-            if ~isempty( strfind( varargin{1},'.csv' ) )
-                myt = readtable(varargin{1},'delimiter',',');
-                myfxn = @(x) sum(find( ismember( obj.subfolderTable.Name , x ) == 1 ))
-                toremove = rowfun( myfxn , myt, 'OutputFormat', 'uniform' );
-                comment = sprintf('Removed through %s',varargin{1});
-                for i = toremove'; if i>0; obj.hmmsegs.(sprintf('obj_%i',i)) = brownianTableClass( i, comment); fprintf('Emptied obj_%i Browniantables\n',i); end; end
+        function clearTables(obj, objToClear, comment)
+            if and( strcmp( class(objToClear), 'double'),strcmp( class(comment), 'char') )
+                obj.hmmsegs.(sprintf('obj_%i',objToClear)).brownianTable = brownianTableClass( obj.hmmsegs.(sprintf('obj_%i',objToClear)), comment);
+            else
+                fprintf("Please enter the object to clear and the comment as text. clearTables(10,'Testing parameters')\n");
             end
         end
         
