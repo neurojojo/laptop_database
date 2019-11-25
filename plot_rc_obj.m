@@ -86,4 +86,3 @@ function plot_rc_obj( rc_obj, ...
     if remove_ends; title('Ends removed'); else; title('Ends kept'); end
     
 end
-
