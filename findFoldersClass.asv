@@ -128,14 +128,14 @@ classdef findFoldersClass < handle
         
         % This was added 12/5 and needs to be more properly integrated
         function computeRelativeSegIdx(obj)
-            obj.segs = structfun( @(x) obj.expand_DC_MSS_Segs(x), obj.segs,'ErrorHandler',@(x,y) obj.doNothing ,'UniformOutput',false);
+            t = structfun( @(x) obj.expand_DC_MSS_Segs(x), obj.segs,'ErrorHandler',@(x,y) obj.doNothing ,'UniformOutput',false);
         end
         
         function output = expand_DC_MSS_Segs(obj,input_structure)
             toexpand = histc( input_structure.segsTable.trackIdx, [1:max(input_structure.segsTable.trackIdx)] );
-            input_structure.segsTable.segIdx_relative = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) );
-            input_structure.segsTable.segIdx_identifier = eq( diff([input_structure.segsTable.segIdx_relative,1]), 0 );
-            output = input_structure;
+            output = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) );
+            input_structure.segsTable.segIdx_relative = output;
+            
         end
         % End of 12/5 additions
         

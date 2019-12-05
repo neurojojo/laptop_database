@@ -52,6 +52,7 @@ writetable( rc_obj.subfoldersTable, 'nov21_rc_subfolderstable_after_mat_import.c
 rc_obj.getConsolidatedLifetimes( signeFolders );
 rc_obj.computeSegInfo();
 rc_obj.makeDiffusionTable( signeFolders );
+%% End of rc_obj loading
 
 
 %% If a segment has a length of 1, what type of segment is it?
