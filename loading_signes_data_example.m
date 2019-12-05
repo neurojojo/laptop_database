@@ -27,156 +27,213 @@ signeFolders.assignNames();
 objects_to_clear = readtable('objects_to_clear.csv');
 clearfxn = @(x,y) signeFolders.clearTables( x, y{1} );
 rowfun( clearfxn, objects_to_clear, 'NumOutputs', 0 )
+
 %% Restart rc_obj from here
 
 tic; rc_obj = resultsClusterClass( signeFolders ); toc;
 
-%rc_obj.newgroup([46,47])
-%rc_obj.newgroup([34,35,36])
-%rc_obj.newgroup([44,45])
-%rc_obj.integrityCheck();
-
-%
 %% Handling text
 rc_obj.computeClusters( signeFolders );
 writetable( rc_obj.subfoldersTable, 'nov21_rc_subfolderstable.csv' )
-
-%replacement_table = readtable( 'replacement_table.csv' );
-%removeMultipleSpaces = @(x) regexprep(x,'(\s){1,}$','');
-%replacement_table_cell = cellfun( removeMultipleSpaces, replacement_table.Replacement,'UniformOutput',false);
-
 rc_obj.subfoldersTable = readtable( 'nov21_rc_subfolderstable_10am.csv' );
 
 %% Pooling
 
 [unique_labels,idx_labels,newSuperclusters] = unique( rc_obj.subfoldersTable.Shortname );
-
 newSuperclustersTable = table( unique(newSuperclusters), unique_labels );
 newSuperclustersTable.Properties.VariableNames = {'Supercluster','Clustertext'};
 
 rc_obj.clustersTable = sortrows( newSuperclustersTable, 'Supercluster' );
 rc_obj.subfoldersTable.Supercluster = newSuperclusters;
-%%
 writetable( rc_obj.subfoldersTable, 'nov21_rc_subfolderstable_after_mat_import.csv' )
 
 %%
 
 rc_obj.getConsolidatedLifetimes( signeFolders );
 rc_obj.computeSegInfo();
-
-%%
 rc_obj.makeDiffusionTable( signeFolders );
 
-%% DC1 versus DC2
-figdetails = 'DC1_v_DC2'
-Quantity1 = 'DC1';
-Quantity2 = 'DC2';
-xlims = [0, 1];
-ylims = [0, 1];
 
-mytable = rc_obj.diffusionTableNaNs;
-get_supercluster_stats = @( supercluster, quantity ) table( supercluster,...
-           sum( mytable.Supercluster == supercluster ),...
-           prctile( mytable( mytable.Supercluster == supercluster , : ).(quantity), 25 ),...
-           prctile( mytable( mytable.Supercluster == supercluster , : ).(quantity), 50 ),...
-           prctile( mytable( mytable.Supercluster == supercluster , : ).(quantity), 75 ),...
-           mean( mytable( mytable.Supercluster == supercluster , : ).(quantity) ), ...
-           std( mytable( mytable.Supercluster == supercluster , : ).(quantity) ),...
-       'VariableNames',{'Supercluster','Nentries','Prc25','Med','Prc75','mu','sigma'} );
+%% If a segment has a length of 1, what type of segment is it?
+% Single tracks are twice as likely to be in State 1 (fast state)
 
-variableNames = {'Supercluster','Nentries','Prc25','Med','Prc75','mu','sigma'};
+% Logical for only 1 track in seg
+only1track = eq(rc_obj.lifetimesTable.tracksInSeg,1);
+instate1 = eq(rc_obj.lifetimesTable.State,1);
+piedata = histc( rc_obj.lifetimesTable( only1track, : ).State, [1:2] );
+mypietable = table( {'State','State'}', [1:2]', piedata/sum(piedata) );
+mylegend = rowfun(@(x,y,z) sprintf('%s %i (%1.0f%s)',x{1},y,100*z,char(37)), mypietable,'OutputFormat','cell');
 
-close all
-f=figure('color','w'); ax_ = axes('parent',f,'tickdir','out','xlim',[0,0.7],'ylim',[0,0.2]); 
+pie( piedata, mylegend )
 
-%Superclusters = [11,12,13,14]';
+%%
+xlims = [0,1000]; ylims = [0,1000];
+myparams = {'State1Tracks','State2Tracks','Supercluster'};
+details.typeoftrack = 'only1length';
+details.xlabels = 'Ntracks state 1';
+details.ylabels = 'Ntracks state 2';
+colors = jet( 5+numel(unique(rc_obj.consolidatedLifetimes.Supercluster)) );
 
-[Superclusters,figname] = multipleRegex( rc_obj.clustersTable.Clustertext, 'D2', 'not gamma', 'not alfa', 'not ins4a', 'not Gs', 'not Lacro' );
-% NEW STEP %
-Superclusters = rc_obj.clustersTable.Supercluster(Superclusters);
+rc_obj.consolidateSuperclusterLifetimes( details.typeoftrack );
 
-mycluster_colors = Superclusters;
+fig = figure( 'color','w','userdata', rc_obj.consolidatedLifetimes(:,myparams) ) ; 
+ax_ = axis(); hold on;
+rowfun(@(x,y,z,obj_idx) plot(x,y,'ko','MarkerFaceColor',colors(z,:),'Tag',sprintf('SC%i',obj_idx)), rc_obj.consolidatedLifetimes(:,{'State1Tracks','State2Tracks','Supercluster','Obj_Idx'}) );
+xlim(xlims);ylim(ylims);
+plot(xlims,ylims,'k--')
+xlabel(details.xlabels); ylabel(details.ylabels);
 
-OrganizeTable = table( Superclusters,...
-    repmat( Quantity1, numel(Superclusters), 1 ));
-dc1_output = rowfun( get_supercluster_stats, OrganizeTable );
-dc1_output = array2table( table2array( dc1_output.Var1), 'VariableNames', variableNames );
+%set(gca,'tickdir','out')
+%datacursormode on
+%dcm_obj = datacursormode(fig);
+%set(dcm_obj,'UpdateFcn',{@myupdatefcn_signe})
+%%
 
-OrganizeTable = table( Superclusters,...
-    repmat( Quantity2, numel(Superclusters), 1 ));
-oc1_output = rowfun( get_supercluster_stats, OrganizeTable );
-oc1_output = array2table( table2array( oc1_output.Var1), 'VariableNames', variableNames );
+figure('color','w');
+details.title = 'Only 1-length state 1';
+details.xlabel = '(s)';
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.3];
+data = rc_obj.lifetimesTable( and( instate1, only1track ), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf','binwidth',binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
 
-crossTable = join( dc1_output(:,[1,3,4,5]),  oc1_output(:,[3,4,5,1]) , 'key', {'Supercluster'});
-crossTable.color = [1:size(crossTable,1)]';
-crossTable.maxColor = repmat( size(crossTable,1), size(crossTable,1), 1);
-crossTable.ax = repmat( ax_, size(crossTable,1), 1);
+%%
 
-crossTable.legend = rc_obj.clustersTable( find( ismember( rc_obj.clustersTable.Supercluster, crossTable.Supercluster ) == 1 ), : ).Clustertext;
-combineMed = @(name,med1,med2) {sprintf('%s (x=%1.2f y=%1.2f)',name{1},med1,med2)}; newlegend = rowfun( combineMed, crossTable(:,[end,3,6]) );
-crossTable.legend = newlegend.Var1;
-
-crossTable = sortrows(crossTable, 'legend' );
-crossTable.color = [1:size(crossTable,1)]';
-rowfun( @crossObj, crossTable );
-set(gca,'Xlim',xlims,'YLim',ylims);
-
-xlabel(sprintf('%s',Quantity1))
-ylabel(sprintf('%s',Quantity2))
-set(gcf,'WindowState','maximized')
-pause(0.5);
-textToTop(gca);
-
-figname = regexprep(figname,'\(|\)|(\|)','_');
-print( gcf, sprintf('figure_%s_%s_%s_%s_%s.png',figdetails,Quantity1,Quantity2,figname), '-dpng', '-r0' )
-
-%% Lifetime plots
-
-remove_ends = 1;
-Quantity1 = 'Lifetime1';
-Quantity2 = 'Lifetime2';
-figdetails = 'Lifetime_xy_';
-newfig = 0;
-sorting = []; colors = 'tans'; query = {'Gi1 D2 ins4a','Sulpiride'};
-
-% Possible queries
-% sorting = [3,1,2]; colors = 'blues'; query = {'Gi1 D2 ins4a','not quinpirole','not sulpiride'}; %'Gi1 D2 ins4A Quinpirole'
-% 
-% sorting = [3,1,2]; colors = 'reds'; query = {'Gi1 D2 ins4a', 'quinpirole'}; %'Gi1 D2 ins4A Quinpirole'
-%
-% sorting = []; colors = 'tans'; query = {'Gi1 D2 ins4a','Sulpiride'};
-[Superclusters,figname] = multipleRegex( rc_obj.clustersTable.Clustertext, query );
-
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-%% Figure 1
-close all;
-
-sorting = [3,1,2]; colors = 'blues'; query = {'Gi1 D2 ins4a','not quinpirole','not sulpiride'}; %'Gi1 D2 ins4A Quinpirole'
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-sorting = [3,1,2]; colors = 'reds'; query = {'Gi1 D2 ins4a', 'quinpirole'}; %'Gi1 D2 ins4A Quinpirole'
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-sorting = []; colors = 'tans'; query = {'Gi1 D2 ins4a','Sulpiride'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-xlim([0,40]); ylim([0,80]);
-textToTop(gca);
-
-%% Figure 2
-close all;
-sorting = []; colors = 'blues'; query = {'2400 ng'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
-
-sorting = []; colors = 'reds'; query = {'Gi','not D2','not Lat'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
+figure('color','w');
+details.title = 'Only 1-length state 2';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.3];
+data = rc_obj.lifetimesTable( and( eq(rc_obj.lifetimesTable.State,2), eq(rc_obj.lifetimesTable.tracksInSeg,1) ), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
 
 
-%% Figure 3
-close all;
-sorting = []; colors = 'blues'; query = {'D2','1200 ng', 'no treat', 'not PTXR'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
+%% Comparison with state 1 transitions
 
-sorting = []; colors = 'reds'; query = {'PTXR','1200 ng', 'no treat'};
-plot_rc_obj( rc_obj, remove_ends, Quantity1, Quantity2, figdetails, xlims, ylims, sorting, colors, query, newfig )
+figure('color','w');
+details.title = 'Transition tracks state 1';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.5];
+data = rc_obj.lifetimesTable( logical(eq(rc_obj.lifetimesTable.State,1).*... 
+                                      gt(rc_obj.lifetimesTable.tracksInSeg,2).*...
+                                      eq(rc_obj.lifetimesTable.Identifier,0)), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
 
+%% State 2 transitions
+
+figure('color','w');
+details.title = 'Transition tracks state 2';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.8];
+data = rc_obj.lifetimesTable( logical(eq(rc_obj.lifetimesTable.State,2).*... 
+                                      gt(rc_obj.lifetimesTable.tracksInSeg,2).*...
+                                      eq(rc_obj.lifetimesTable.Identifier,0)), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+%% State 1 ends are shorter
+
+figure('color','w');
+details.title = 'Lifetime of last segment in track if state 1';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.3];
+data = rc_obj.lifetimesTable( and( eq(rc_obj.lifetimesTable.State,1), eq(rc_obj.lifetimesTable.Identifier,1) ), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+
+%% State 2 ends are longer
+
+figure('color','w');
+details.title = 'Lifetime of last segment in track if state 2';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.3];
+data = rc_obj.lifetimesTable( and( eq(rc_obj.lifetimesTable.State,2), eq(rc_obj.lifetimesTable.Identifier,1) ), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+%% Fraction of tracks that are single tracks
+
+data = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1)),:);
+figure('color','w'); bar( [0:24], histc( data.Supercluster, [0:24] )./histc( rc_obj.lifetimesTable.Supercluster, [0:24] ),'k' ); camroll(-90)
+set(gca,'XTick', unique(rc_obj.lifetimesTable.Supercluster), 'TickDir', 'out', 'XTickLabel', rc_obj.clustersTable.Clustertext); box off;
+ylabel('Fraction of tracks that are single tracks')
+
+%% Fraction of tracks that are single tracks (in state 1)
+data = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1).*(rc_obj.lifetimesTable.State==1)),:);
+figure('color','w'); bar( [0:24], histc( data.Supercluster, [0:24] )./histc( rc_obj.lifetimesTable.Supercluster, [0:24] ),'k' ); camroll(-90)
+set(gca,'XTick', unique(rc_obj.lifetimesTable.Supercluster), 'TickDir', 'out', 'XTickLabel', rc_obj.clustersTable.Clustertext); box off;
+ylabel('Fraction of tracks that are single tracks in State 1')
+ylim([0,1])
+
+data = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1).*(rc_obj.lifetimesTable.State==2)),:);
+figure('color','w'); bar( [0:24], histc( data.Supercluster, [0:24] )./histc( rc_obj.lifetimesTable.Supercluster, [0:24] ),'k' ); camroll(-90)
+set(gca,'XTick', unique(rc_obj.lifetimesTable.Supercluster), 'TickDir', 'out', 'XTickLabel', rc_obj.clustersTable.Clustertext); box off;
+ylabel('Fraction of tracks that are single tracks in State 2')
+ylim([0,1])
+
+%% Likelihood to be in State 1 versus State 2 if a single track
+
+
+data1 = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1).*(rc_obj.lifetimesTable.State==1)),:);
+data2 = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1).*(rc_obj.lifetimesTable.State==2)),:);
+
+figure('color','w'); bar( [0:24], histc( data1.Supercluster, [0:24] )./histc( data2.Supercluster, [0:24] ),'k' ); camroll(-90)
+set(gca,'XTick', unique(rc_obj.lifetimesTable.Supercluster), 'TickDir', 'out', 'XTickLabel', rc_obj.clustersTable.Clustertext); box off;
+ylabel('Odds of State 1 to State 2 for a single track')
+ylim([0,10])
+
+%%
+mytable = signeFolders.hmmsegs.obj_5.brownianTable
+[x1,y1] = deal( rowfun(@(x) mean(x{1}), mytable.State1(:,{'hmm_xSeg'}) ),...
+    rowfun(@(x) mean(x{1}), mytable.State1(:,{'hmm_ySeg'}) ));
+[x2,y2] = deal( rowfun(@(x) mean(x{1}), mytable.State2(:,{'hmm_xSeg'}) ),...
+    rowfun(@(x) mean(x{1}), mytable.State2(:,{'hmm_ySeg'}) ));
+
+figure; 
+subplot(1,2,1); imagesc( (1/numel(x1.Var1))*histcounts2(x1.Var1,y1.Var1,[64,64]) ); axis image; title('State 1 (all segments)')
+subplot(1,2,2); imagesc( (1/numel(x2.Var1))*histcounts2(x2.Var1,y2.Var1,[64,64]) ); axis image; title('State 2 (all segments)')
+%subplot(1,3,3); imagesc( histcounts2(x2.Var1,y2.Var1,[64,64])./histcounts2(x1.Var1,y1.Var1,[64,64]) ); axis image; title('Odds of State 1 versus State 2 (all segments)');
+
+set(gcf,'position',[55,280,670,330])
+
+%%
+
+figure; cdfplot( rc_obj.lifetimesTable(rc_obj.lifetimesTable.Supercluster==20,:).tracksInSeg )

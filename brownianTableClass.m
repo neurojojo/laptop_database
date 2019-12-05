@@ -3,6 +3,7 @@ classdef brownianTableClass < handle
     properties
         brownianTable;
         metadata;
+        Nstates = 2;
     end
     
     properties(GetAccess='private')
@@ -10,7 +11,6 @@ classdef brownianTableClass < handle
     end
     
     properties(GetAccess='private',Constant)
-        Nstates = 2;
         varTypes = repmat({'double'},1,7);
         varNames = {'trackIdx','segIdx','hmmSegIdx','hmmSegStart','abs_hmmSegStart','hmm_xSeg','hmm_ySeg'};
     end

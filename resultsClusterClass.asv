@@ -336,7 +336,7 @@ classdef resultsClusterClass < handle
                 remove_ends_flag = 1;
                 remove_ends_min = varargin{ find(strcmp(varargin,'remove_ends')==1)+1 };
                 mytable = obj.lifetimesTable( (obj.lifetimesTable.tracksInSeg>remove_ends_min) & (obj.lifetimesTable.Identifier==0) , : );
-                fprintf('Removed end tracks from consolidated lifetimes variable and only took tracks longer than %i\n', remove_ends_min);
+                fprintf('Removed end tracks from consolidated lifetimes variable and onl\n');
             else 
                 mytable = obj.lifetimesTable;
             end
@@ -344,6 +344,8 @@ classdef resultsClusterClass < handle
             % Check for only1length flag
             if sum(strcmp(varargin,'only1length'))>0
                 mytable = obj.lifetimesTable( (obj.lifetimesTable.tracksInSeg==1 ), : );
+            else
+                mytable = obj.lifetimesTable;
             end
             
             for i = unique( mytable.Supercluster )'

@@ -37,10 +37,17 @@ end
 %tables_by_idx = rowfun(@(x) mytable(mytable.Obj_Idx==x,:), objs, 'OutputFormat', 'cell');
 
 %% Plot state1 and state2
-figure;
-mytable = signeFolders.hmmsegs.obj_153.brownianTable
+figure('color','w');
+Nbins = [24,24];
+
+mytable = signeFolders.hmmsegs.obj_147.brownianTable
 output = rowfun( @(x,y) [mean(x{1}),mean(y{1})], mytable.State1(:,{'hmm_xSeg','hmm_ySeg'}));
-plot( output.Var1, 'ro' );
+N1 = histcounts2( output.Var1(:,1), output.Var1(:,2), Nbins );
+subplot(1,3,1); imagesc(N1); set(gca,'XTick',[],'YTick',[]);
+
 output = rowfun( @(x,y) [mean(x{1}),mean(y{1})], mytable.State2(:,{'hmm_xSeg','hmm_ySeg'}));
-hold on;
-plot( output.Var1, 'bo' );
+N2 = histcounts2( output.Var1(:,1), output.Var1(:,2), Nbins );
+subplot(1,3,2); imagesc(N2); set(gca,'XTick',[],'YTick',[]);
+
+N3 = N2./N1;
+subplot(1,3,3); imagesc(N3); set(gca,'XTick',[],'YTick',[]);

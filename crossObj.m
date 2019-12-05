@@ -13,7 +13,7 @@ classdef crossObj < handle
     end
     
     methods
-        function obj = crossObj( label, x0, xcenter, x1, y0, ycenter, y1, color, maxColor, parent, legend, colors )
+        function obj = crossObj( label, Nentries, x0, xcenter, x1, y0, ycenter, y1, color, maxColor, parent, legend, colors )
             
             colors = palette( colors );
             

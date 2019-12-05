@@ -23,7 +23,6 @@ function fig=plot_rc_obj( rc_obj, ...
     ax_ = gca;
     variableNames = {'Supercluster','Nentries','Prc25','Med','Prc75','mu_minus_sd','mu','mu_plus_sd'};
     [Superclusters,figname] = multipleRegex( rc_obj.clustersTable.Clustertext, query );
-    
     % NEW STEP %
     Superclusters = rc_obj.clustersTable.Supercluster(Superclusters);
     mycluster_colors = Superclusters;
@@ -93,7 +92,7 @@ function fig=plot_rc_obj( rc_obj, ...
     % Get occupancy stats
     mytable = rc_obj.diffusionTableNaNs;
     get_supercluster_occupancies = @( supercluster ) nanmean(mytable(mytable.Supercluster == supercluster,:).Occupancy1);
-    forbars = arrayfun( get_supercluster_occupancies, Superclusters, 'UniformOutput', true );
+    %forbars = arrayfun( get_supercluster_occupancies, Superclusters, 'UniformOutput', true );
     
     fig = get(gcf);
 end
