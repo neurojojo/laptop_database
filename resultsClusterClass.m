@@ -8,6 +8,7 @@ classdef resultsClusterClass < handle
         consolidatedLifetimes
         diffusionTable
         diffusionTableNaNs
+        segmentsTable
         subfoldersTable
         Id
     end
@@ -148,7 +149,9 @@ classdef resultsClusterClass < handle
         end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %    END CONSTRUCTOR FUNCTION           %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%     
+        
+        
         function makeDiffusionTable(obj, findFoldersObj)
             
             errH = @(a,b) 0;

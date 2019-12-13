@@ -29,7 +29,7 @@ classdef brownianTableClass < handle
                 obj.metadata.Type = 'tracks';
                 obj.metadata.DiffCoeff = [NaN, NaN];
                 obj.metadata.Comments = 'Empty tracks';
-                if strcmp( class(varargin{2}), 'char' ); obj.metadata.Comments = varargin{2}; end
+                if nargin>1; if strcmp( class(varargin{2}), 'char' ); obj.metadata.Comments = varargin{2}; end; end
                 for i = 1:obj.Nstates; obj.brownianTable.(sprintf('State%i',i)) = table('Size',[0 numel(obj.varNames)],'VariableTypes',obj.varTypes,'VariableNames',obj.varNames); end
                 return
             end
@@ -98,12 +98,13 @@ classdef brownianTableClass < handle
                         Diff_Coeff(i) = calculate_Diff_Coeff( results_, i );
                         mytable = obj.parseStates(ML_states,i); % Send in the ML states to be parsed
                         mytable = [ mytable, rowfun(rf_x, mytable(:,[2,3,4]),'OutputVariableNames','hmm_xSeg'), rowfun(rf_y, mytable(:,[2,3,4]),'OutputVariableNames','hmm_ySeg') ];
-                        [mytable.abs_hmmSegStart,mytable.abs_hmmSegEnd,mytable.segIdx,mytable.trackIdx] = deal( ...
+                        [mytable.abs_hmmSegStart,mytable.abs_hmmSegEnd,mytable.segIdx,mytable.trackIdx,mytable.segType] = deal( ...
                                                                                                             mytable.hmmSegStart + obj.hmmTable( mytable.subSegIdx,:).abs_segStart,...
                                                                                                             mytable.hmmSegEnd + obj.hmmTable( mytable.subSegIdx,:).abs_segStart,...
                                                                                                             obj.hmmTable.segIdx( mytable.subSegIdx ),...
-                                                                                                            obj.hmmTable.trackIdx( mytable.subSegIdx));
-                        mytable = mytable(:,{'trackIdx','segIdx','hmmSegIdx','hmmSegStart','abs_hmmSegStart','hmm_xSeg','hmm_ySeg'});
+                                                                                                            obj.hmmTable.trackIdx( mytable.subSegIdx),...
+                                                                                                            repmat( 100+i, numel( mytable.subSegIdx ), 1 ) );
+                        mytable = mytable(:,{'trackIdx','segIdx','hmmSegIdx','hmmSegStart','abs_hmmSegStart','hmm_xSeg','hmm_ySeg','segType'});
                         
                         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                         % This part is for associating the segments with %

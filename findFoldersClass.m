@@ -77,7 +77,7 @@ classdef findFoldersClass < handle
             obj.subfolderTable.Properties.VariableNames={'Name'};
             
         end
-        
+
         function saveTables(obj)
             save( sprintf('allfolders_%s.mat',date), 'obj' );
         end
@@ -132,15 +132,23 @@ classdef findFoldersClass < handle
         end
         
         function output = expand_DC_MSS_Segs(obj,input_structure)
-            toexpand = histc( input_structure.segsTable.trackIdx, [1:max(input_structure.segsTable.trackIdx)] );
-            input_structure.segsTable.segIdx_relative = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) );
-            input_structure.segsTable.segIdx_identifier = eq( diff([input_structure.segsTable.segIdx_relative,1]), 0 );
-            output = input_structure;
+            try
+                toexpand = histc( input_structure.segsTable.trackIdx, [1:max(input_structure.segsTable.trackIdx)] );
+                input_structure.segsTable.segIdx_relative = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) );
+                input_structure.segsTable.segIdx_identifier = [ eq( diff( input_structure.segsTable.segIdx_relative,1 ), 0 ); 0 ];
+                output = input_structure;
+            catch
+                output = input_structure;
+            end
         end
         % End of 12/5 additions
         
         function varargout = doNothing(obj,varargin)
             varargout{1}=[];
+        end
+        
+        function varargout = returnNaN(obj,varargin)
+            varargout{1}=repmat(NaN,1,varargin{1});
         end
         
         function makeHMMSegObjs(obj)
@@ -192,7 +200,7 @@ classdef findFoldersClass < handle
             for I = myobjs'
                 thisObj = I{1};
                 % Currently this only workr two state models
-                if ~strcmp( obj.hmmsegs.(thisObj).metadata.Type, 'Error' ) 
+                if and( ~strcmp( obj.hmmsegs.(thisObj).metadata.Type, 'Error' ), isfield( obj.hmmsegs.(thisObj).brownianTable, 'State1' ) ); 
                     tmp = [ obj.hmmsegs.(thisObj).brownianTable.State1;obj.hmmsegs.(thisObj).brownianTable.State2];
                     segs = tmp.segIdx;
                     segs_histogram = table( unique(segs), histc( segs, unique(segs) ) , 'VariableNames', {'segIdx','NumSegs'} );
