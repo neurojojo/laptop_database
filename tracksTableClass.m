@@ -13,7 +13,7 @@ classdef tracksTableClass < handle
     
     properties(GetAccess='private')
         %defaultFiles = {'Tracking.mat','TrackingPst.mat','smTracesCh1.mat','smTracesCh1Pst.mat','smTracks.mat','results.mat','analysis_output.mat'};
-        defaultFiles = {'Tracking.mat','results.mat','analysis_output.mat'};
+        defaultFiles = {'Tracking.mat','results.mat'};
         FilesToFind;
         % These are properties for the table
         varnames = {'id','trackStart','x','y'};
@@ -86,17 +86,11 @@ classdef tracksTableClass < handle
             end
             
             % User specified profile
-            if ~isempty(FilesToFind) & ~strcmp(FilesToFind,'signe') % If the user specified files
-                obj.FilesToFind = FilesToFind;
-                fileStruct = obj.findFiles(Directory, obj.FilesToFind);    
-                [fileStruct.Tracking,fileStruct.TrackingPst,fileStruct.results,fileStruct.analysis_output] = ...
-                    deal( any(strcmp(FilesToFind,'Tracking.mat')), any(strcmp(FilesToFind,'TrackingPst.mat')), any(strcmp(FilesToFind,'results.mat')), any(strcmp(FilesToFind,'analysis_output.mat')));    
-            end
-            % A back-up default profile
-            if isempty(FilesToFind)
+            if or( isempty(FilesToFind), strcmp(FilesToFind,'default')) % If the user specified files
                 obj.FilesToFind = obj.defaultFiles;
-                fprintf('File search executed.\n');
-                fileStruct = obj.findFiles(Directory, obj.FilesToFind);    
+                fileStruct = obj.findFiles(Directory, obj.FilesToFind);     
+                [fileStruct.Tracking,fileStruct.TrackingPst,fileStruct.results,fileStruct.analysis_output] = ...
+                    deal( any(strcmp(obj.FilesToFind,'Tracking.mat')), any(strcmp(obj.FilesToFind,'TrackingPst.mat')), any(strcmp(obj.FilesToFind,'results.mat')), any(strcmp(obj.FilesToFind,'analysis_output.mat')));    
             end
             
             if ~any( cell2mat(regexp( fieldnames(fileStruct), 'address.*')) )
@@ -107,7 +101,7 @@ classdef tracksTableClass < handle
             %%%%%%%%%%%%%%%%% TRACKING DATA PARSED HERE %%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            if ~fileStruct.Tracking & fileStruct.analysis_output; obj.metadata.Comments = sprintf('No tracking file located even though the HMM analysis file exists at:\n%s', fileStruct.address_analysis_output); 
+            if and(~fileStruct.Tracking, fileStruct.analysis_output); obj.metadata.Comments = sprintf('No tracking file located even though the HMM analysis file exists at:\n%s', fileStruct.address_analysis_output); 
                 return
             end
             if ~fileStruct.Tracking; obj.metadata.Comments =  sprintf('No tracking file located and no HMM analysis files located'); 
@@ -115,6 +109,7 @@ classdef tracksTableClass < handle
             end
             
             fileStruct.N_TrackingPst=0; fileStruct.N_Tracking=0;
+            
             % Tracking file is located
             if isfield(fileStruct,'Tracking')
                 try
@@ -136,6 +131,7 @@ classdef tracksTableClass < handle
             %    end; 
             %end;
             % DC-MSS segmentation file is located
+            
             if fileStruct.results
                 tmp=whos('-file',fileStruct.address_results,'results','size'); 
                 fileStruct.N_results = max(tmp.size); 
@@ -167,12 +163,14 @@ classdef tracksTableClass < handle
             obj.metadata.Comments='NA';
             
         end
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % END CONSTRUCTOR FUNCTION %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        function saveTables(obj)
-            save( sprintf('%s_files_%05d.mat',obj.metadata.Type,obj.metadata.Key), 'obj' );
+        function saveTables(obj,varargin)
+            if nargin>1; mystr = varargin{1}; end
+            save( sprintf('%s_%s_files_%05d.mat',obj.metadata.Type,mystr,obj.metadata.Key), 'obj' );
         end
 
     end

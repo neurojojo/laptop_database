@@ -3,6 +3,7 @@ classdef findFoldersClass < handle
     properties
         folderTable;
         subfolderTable;
+        trackingParametersTable;
         metadata;
         tracks = struct();
         segs = struct();
@@ -46,20 +47,28 @@ classdef findFoldersClass < handle
             obj.metadata.options = options;
 
             ALL_files=dir(TLD);
-            allresults={};
+            % Restrict to DIRECTORIES:
+            ALL_files=ALL_files( arrayfun( @(x) and( gt(numel(x.name),2), x.isdir ), ALL_files ), : );
+            
+            % Checking for 
+            fprintf('Checking for %s\n', folder_regexpstring );
+            fprintf('within subfolders of:\n')
+            arrayfun(@(x) fprintf('%s\\%s\\\n', x.folder, x.name), ALL_files );
+            
             
             % Check each folders of the TLD to find folder_regexpstring matches
             % Result goes to obj.folderTable
-            for i = 2:size(ALL_files,1)
-                % Create myhits to search within the first level
-                myhits = dir( sprintf('%s\\%s',ALL_files(i).folder,ALL_files(i).name) );
-                results = arrayfun(@(x) ~isempty(regexp(x.name,...
-                    folder_regexpstring...
-                    )), myhits, 'UniformOutput', false);
-                results = find(cell2mat(results)==1);
-                for j = 1:size(results,1)
-                    allresults = [allresults; {sprintf('%s\\%s',myhits(results(j)).folder,myhits(results(j)).name)}];
-                end
+            subdirectories = arrayfun(@(x) dir( sprintf('%s\\%s',x.folder,x.name) ), ALL_files, 'UniformOutput', false );
+            
+            %% Contents of those directories
+            subdirectory_contents = arrayfun( @(x) dir( sprintf('%s\\%s\\',x.folder,x.name) ), ALL_files  , 'UniformOutput', false);
+            
+            allresults = [];
+            for these_contents = subdirectory_contents'
+                all_files_this_subdirectory = arrayfun(@(y) regexp( y{1}.name, folder_regexpstring ),...
+                                                              arrayfun(@(x) x, these_contents{1}, 'UniformOutput', false), 'UniformOutput', false );
+                allresults = [ allresults; arrayfun(@(x) sprintf( '%s\\%s', x.folder, x.name),...
+                                                         these_contents{1}( find(arrayfun( @(x) numel(x{1}), all_files_this_subdirectory )==1) ),'UniformOutput',false) ];
             end
             
             obj.folderTable = allresults;
@@ -67,20 +76,46 @@ classdef findFoldersClass < handle
             % Check each subfolder from above for file_regexpstring matches
             % Result goes to obj.subfolderTable
             mytable = table();
-           for i = 1:size(allresults)
+            for i = 1:size(allresults)
                myt = rdir( sprintf('%s\\**\\%s', allresults{i}, file_regexpstring ) ); % For Bayesian: use analysis_output.mat
                if ~isempty(myt); mytable = [mytable; cell2table( extractfield(myt,'name')' )]; end
                fprintf('Currently located %i folders containing the file you want\n',size( mytable, 1 ));
-           end
+            end
             
             obj.subfolderTable = mytable;
             obj.subfolderTable.Properties.VariableNames={'Name'};
             
         end
 
-        function saveTables(obj)
-            save( sprintf('allfolders_%s.mat',date), 'obj' );
+        function saveTables(obj,varargin)
+        
+            if nargin>1; mystr = sprintf('_%s_',varargin{1}); else mystr=''; end
+            save( sprintf('allfolders%s_%s.mat',mystr,date), 'obj' );
+        
         end
+        
+        function collectParameters(obj)
+            
+            % First collect highest level directory that is common to all files
+            allsubfolders = cell2table( cellfun(@(x) x{1}, rowfun( @(x) regexp( x, '(.*)(?=#\d+Ch)', 'match' ), obj.subfolderTable, 'OutputFormat', 'cell' )));
+            [~,b] = unique(allsubfolders);
+            allsubfolders = rowfun(@(x) regexprep(x,'results.mat','Tracking.mat'), obj.subfolderTable(b,:));
+            
+            parameters_out = rowfun(@(x) load(x{1},'costMatrices','gapCloseParam'), allsubfolders);
+            allfiles = rowfun(@(x) {sprintf('%s\\%s',x{1},'Tracking.mat')}, allsubfolders );
+            parameters_table = cellfun( @(x) struct2table( x.costMatrices(2).parameters, 'AsArray', true ), table2cell(parameters_out), 'UniformOutput', false );
+            for i = 1:numel(parameters_table); if numel(parameters_table{i})<18; [parameters_table{i}.gapExcludeMS,parameters_table{i}.strategyBD] = deal(nan,nan); end; end;
+            all_parameters = table(); for this_table = parameters_table'; all_parameters = [ all_parameters; this_table{1} ]; end;
+            all_parameters.brownStdMult = rowfun(@(x) {num2str(x{1}')}, all_parameters(:,4) );
+            all_parameters.linStdMult = rowfun(@(x) {num2str(x{1}')}, all_parameters(:,11) );
+            
+            obj.trackingParametersTable = [allsubfolders, all_parameters];
+            obj.trackingParametersTable.Properties.VariableNames{1} = 'Subfolder';
+            
+        end
+        %output = arrayfun( @(year) rowfun(@(x) ~isempty( regexp(x{1}, sprintf('%i',year) ) ), obj.subfolderTable(:,1) ), [2016:2019], 'UniformOutput', false );
+            %output = cellfun( @(x) obj.subfolderTable( find( x.Var1==1 ), : ), output, 'UniformOutput', false );
+            %1
         
         function switchHMMstates(obj)
             
@@ -99,11 +134,14 @@ classdef findFoldersClass < handle
            end
         end
         
-        function makeTrackObjs(obj)
-            for i = 1:size(obj.subfolderTable) % Leave where you left off
-               searchquery = regexp( obj.subfolderTable(i,:).Name{1}, '.*[Ch1]', 'match'); searchquery = searchquery{1};
+        function makeTrackObjs(obj,varargin)
+            
+            if nargin>1; mystr = varargin{1}; else; mystr = ''; end
+            
+            for i = 1:size(obj.subfolderTable)
+               searchquery = regexp( obj.subfolderTable(i,:).Name{1}, sprintf('.*%s.*[Ch1]',mystr), 'match'); 
                try
-                   tmp_ = tracksTableClass( searchquery, i, obj.metadata.options.optional_args );
+                   tmp_ = tracksTableClass( searchquery{1}, i, obj.metadata.options.optional_args );
                    obj.tracks.(sprintf('obj_%i',i)) = tmp_;
                    obj.metadata.logs.tracks{i} = sprintf('Success');
                catch
@@ -111,6 +149,7 @@ classdef findFoldersClass < handle
                    obj.metadata.logs.tracks{i} = sprintf('%i failed: %s (%s)', i, lasterr, datetime()); % Tell on the failing file
                end
             end
+            
         end
         
         function makeSegObjs(obj)
