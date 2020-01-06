@@ -1,12 +1,36 @@
 function palette_out = palette(color, varargin)
 
+% A one-line hex2dec conversion:
+myfxn = @(mycolor) arrayfun(@(x) hex2dec(x), regexp(mycolor,'\w{2}','match') )/255;
+
+palettes.lines = [1.0000    0.7294    0.7294
+                    0    0.5882    0.4333
+                    0.7020    0.8039    0.8784];
+    
+
 palettes.reds = [
-        1.0000    0.7294    0.7294
-    %1.0000    0.4824    0.4824
-    1.0000    0.3216    0.3216
-    %1.0000         0         0
-    0.6549         0         0
+        1.0000    0.52    0.0
+    1.0000    0.32    0
+    0.9549         0         0
     ];
+
+palettes.fallred = [ myfxn('8F111D')
+    myfxn('A91622')
+    myfxn('BD1628')
+    myfxn('D31122')
+    myfxn('F1202B')
+    ];
+%Source: https://www.schemecolor.com/fall-red-color-scheme.php
+
+palettes.pink = flipud( [ myfxn('ffe2f0')
+    myfxn('ffbedc')
+    myfxn('fba1ca')
+    myfxn('f27cb2')
+    myfxn('f45ca2')
+    ]);
+%Source: http://www.chicproductions.com/wp-content/uploads/2016/07/Pink-Wedding-Color-Palette-Orange-County-Luxury-Wedding-Planner-1.png
+
+palettes.rust = [myfxn('#a93333');myfxn('#a93f33');myfxn('#a94533');myfxn('#a94b33');myfxn('#a95133')];
     
 palettes.bluegreens = [
     0.0039    0.1216    0.2941
