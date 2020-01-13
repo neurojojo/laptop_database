@@ -13,6 +13,7 @@ classdef findFoldersClass < handle
     
     properties(Constant)
         Nstates = 2; % For the HMM
+        nparams = 18;
     end
     
     % Constructor method takes one structure as an argument (options)
@@ -31,9 +32,9 @@ classdef findFoldersClass < handle
     %
     % In-place methods:
     %   .saveTables() saves allfolders_date.mat to a options.savelocation
-    %   .makeTrackObjs() produces tracks
-    %   .makeSegObjs() produces segs
-    %   .makeHMMSegObjs() produces hmmsegs
+    %   .makeTrackObjs() produces tracks from Tracking.m files
+    %   .makeSegObjs() produces segs from results.m files
+    %   .makeHMMSegObjs() produces hmmsegs from 
     %   .switchHMMstates() goes into each hmmsegs object and determines
     %   whether to switch the data in the State1 and State2 fields
     
@@ -54,8 +55,7 @@ classdef findFoldersClass < handle
             fprintf('Checking for %s\n', folder_regexpstring );
             fprintf('within subfolders of:\n')
             arrayfun(@(x) fprintf('%s\\%s\\\n', x.folder, x.name), ALL_files );
-            
-            
+                        
             % Check each folders of the TLD to find folder_regexpstring matches
             % Result goes to obj.folderTable
             subdirectories = arrayfun(@(x) dir( sprintf('%s\\%s',x.folder,x.name) ), ALL_files, 'UniformOutput', false );
@@ -96,21 +96,36 @@ classdef findFoldersClass < handle
         
         function collectParameters(obj)
             
-            % First collect highest level directory that is common to all files
-            allsubfolders = cell2table( cellfun(@(x) x{1}, rowfun( @(x) regexp( x, '(.*)(?=#\d+Ch)', 'match' ), obj.subfolderTable, 'OutputFormat', 'cell' )));
-            [~,b] = unique(allsubfolders);
-            allsubfolders = rowfun(@(x) regexprep(x,'results.mat','Tracking.mat'), obj.subfolderTable(b,:));
+            % Outputs trackingParametersTable
             
-            parameters_out = rowfun(@(x) load(x{1},'costMatrices','gapCloseParam'), allsubfolders);
-            allfiles = rowfun(@(x) {sprintf('%s\\%s',x{1},'Tracking.mat')}, allsubfolders );
-            parameters_table = cellfun( @(x) struct2table( x.costMatrices(2).parameters, 'AsArray', true ), table2cell(parameters_out), 'UniformOutput', false );
-            for i = 1:numel(parameters_table); if numel(parameters_table{i})<18; [parameters_table{i}.gapExcludeMS,parameters_table{i}.strategyBD] = deal(nan,nan); end; end;
-            all_parameters = table(); for this_table = parameters_table'; all_parameters = [ all_parameters; this_table{1} ]; end;
+            % We need to have found a tracking file, so each
+            % tracksTableClass object will have parameters
+            %
+            % The best way to locate these tracking files is through the
+            % linked metadata within each tracks object
+            output_cell = struct2cell( structfun(@(x) sprintf('%s\\Tracking.mat',x.metadata.Directory), obj.tracks , 'UniformOutput', false, 'ErrorHandler', @(x,y) obj.doNothing() ) );
+            
+            parameters_out = cellfun(@(x) load(x,'costMatrices','gapCloseParam'), output_cell, 'UniformOutput', false, 'ErrorHandler', @(x,y) obj.doNothing() );
+            
+            % Retrieve all the parameters from the cell arrays created in
+            % the loading step
+            parameters_table = cellfun( @(x) struct2table( x.costMatrices(2).parameters, 'AsArray', true ), parameters_out, 'ErrorHandler', @(x,y) obj.doNothing(), 'UniformOutput', false );
+            
+            for i = 1:numel(parameters_table); 
+                if numel(parameters_table{i})<18; [parameters_table{i}.gapExcludeMS,parameters_table{i}.strategyBD] = deal(nan,nan); 
+                end
+            end
+            all_parameters = table(); for this_table = parameters_table'; if istable(this_table{1}); all_parameters = [ all_parameters; this_table{1} ]; 
+                else
+                    emptyrow = array2table( nan(1, obj.nparams), 'VariableNames', all_parameters.Properties.VariableNames );
+                    [emptyrow.brownScaling, emptyrow.ampRatioLimit,emptyrow.linScaling] = deal( [nan, nan], [nan, nan], [nan, nan] );
+                    all_parameters = [ all_parameters; emptyrow ]; 
+                end
+            end
             all_parameters.brownStdMult = rowfun(@(x) {num2str(x{1}')}, all_parameters(:,4) );
             all_parameters.linStdMult = rowfun(@(x) {num2str(x{1}')}, all_parameters(:,11) );
             
-            obj.trackingParametersTable = [allsubfolders, all_parameters];
-            obj.trackingParametersTable.Properties.VariableNames{1} = 'Subfolder';
+            obj.trackingParametersTable = all_parameters;
             
         end
         %output = arrayfun( @(year) rowfun(@(x) ~isempty( regexp(x{1}, sprintf('%i',year) ) ), obj.subfolderTable(:,1) ), [2016:2019], 'UniformOutput', false );
@@ -147,6 +162,7 @@ classdef findFoldersClass < handle
                catch
                    obj.tracks.(sprintf('obj_%i',i)) = tracksTableClass(i);
                    obj.metadata.logs.tracks{i} = sprintf('%i failed: %s (%s)', i, lasterr, datetime()); % Tell on the failing file
+                   fprintf('Created an empty table for obj_%i',i);
                end
             end
             
@@ -182,14 +198,6 @@ classdef findFoldersClass < handle
         end
         % End of 12/5 additions
         
-        function varargout = doNothing(obj,varargin)
-            varargout{1}=[];
-        end
-        
-        function varargout = returnNaN(obj,varargin)
-            varargout{1}=repmat(NaN,1,varargin{1});
-        end
-        
         function makeHMMSegObjs(obj)
             
             for i = 1:size(obj.subfolderTable) % Leave where you left off power
@@ -217,9 +225,12 @@ classdef findFoldersClass < handle
         end
         
         function clearTables(obj, varargin)
-            if nargin>2
-                if and( strcmp( class(varargin{1}), 'double'),strcmp( class(varargin{2}), 'char') )
-                    obj.hmmsegs.(sprintf('obj_%i',objToClear)).brownianTable = brownianTableClass( obj.hmmsegs.(sprintf('obj_%i',objToClear)), comment);
+            if nargin==3
+                objToClear = varargin{1};
+                comment = varargin{2};
+                if and( isnumeric(objToClear) , ischar(comment) )
+                    obj.hmmsegs.(sprintf('obj_%i',objToClear)) = brownianTableClass( objToClear, comment);
+                    fprintf('Cleared out Brownian Table object %i for reason: %s\n', objToClear, comment);
                 end
             end
             
@@ -261,6 +272,17 @@ classdef findFoldersClass < handle
             end
             
         end
+        
+        % House-keeping functions %
+        
+        function varargout = doNothing(obj,varargin)
+            varargout{1}=[];
+        end
+        
+        function varargout = returnNaN(obj,varargin)
+            varargout{1}=repmat(NaN,1,varargin{1});
+        end
+        
         
         
     end

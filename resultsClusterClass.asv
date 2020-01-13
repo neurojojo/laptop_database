@@ -158,14 +158,10 @@ classdef resultsClusterClass < handle
             end
         end
         
-        
-        function saveTables(obj,varargin)
-        
-            if nargin>1; mystr = sprintf('_%s_',varargin{1}); else mystr=''; end
-            save( sprintf('rc_obj%s_%s.mat',mystr,date), 'obj' );
-        
+        function saveTables(obj)
+            filename = sprintf('thisClusterText_table_%s.csv', obj.Id);
+            writetable( obj.subfoldersTable, filename, 'Delimiter',',');
         end
-        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %    END CONSTRUCTOR FUNCTION           %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%     
@@ -533,20 +529,13 @@ classdef resultsClusterClass < handle
             
         end
         
-        function markovResult = queryMarkov( obj, transitionType )
+        function queryMarkov( transitionType )
            
             letters = obj.markovLetters;
             % Make a dictionary %
             [x,y] = meshgrid([1:numel(letters)]);
-            
-            % This creates a cell of strings, which identifies each
-            % transition type
             transition_dict = arrayfun( @(x,y) sprintf('%s%s',x,y), letters(x(:)),letters(y(:)) ,'UniformOutput',false);
-            transition_dict = reshape( transition_dict, numel(letters), numel(letters) );
             
-            [state1,state2] = find( cellfun( @(x) ~isempty(x), strfind( transition_dict, transitionType ) ) == 1 );
-            
-            markovResult = structfun( @(x) x.markov(state1,state2), obj.sequencesTable )
             
         end
         
@@ -660,32 +649,6 @@ classdef resultsClusterClass < handle
                        set(gca,'Position',pos.*[1,2,.2,1]);
                    end
                 end
-        end
-        
-        function sc = superclusters(obj, varargin)
-           
-           switch nargin
-               case 1
-                   
-                   sc = obj.clustersTable.Supercluster;
-                   
-               case 2
-                   
-                   query = varargin{1};
-                   sc = obj.clustersTable( find(cell2mat( cellfun(@(x) numel(regexpi(x,query)), ...
-                       obj.clustersTable.Clustertext , 'UniformOutput', false) )==1), : ).Supercluster;
-                   
-               case 3
-                   
-                   query = varargin{1};
-                   sc = obj.clustersTable( find(cell2mat( cellfun(@(x) numel(regexpi(x,query)), ...
-                       obj.clustersTable.Clustertext , 'UniformOutput', false) )==1), : ).Supercluster;
-                   
-                   if strcmp(varargin{2},'not')
-                        sc = setxor( obj.clustersTable.Supercluster, sc );
-                   end
-                   
-           end
         end
 
     end

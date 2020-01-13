@@ -1,0 +1,356 @@
+%% Loading data (findFoldersClass)
+
+options.TLD = 'Z:/#BackupMicData';
+options.search_folder = '_SM';
+options.search_subfolder = 'analysis_output.mat';
+options.optional_args = {'FilesToFind','signe'};
+tic; signeFolders = findFoldersClass(options); toc;
+% Takes about one minute
+
+%%
+
+tic; signeFolders.makeTrackObjs; toc;
+tic; signeFolders.makeSegObjs; toc;
+tic; signeFolders.makeHMMSegObjs; toc;
+tic; signeFolders.switchHMMstates; toc;
+tic; signeFolders.patchTracks; toc; % Computes the total number of tracks in a segment (currently only for two state models)
+signeFolders.assignNames(); % Currently this use parseFilename which is set up for signe's data
+
+% About 2 minutes per gigabyte
+%% Clear out Brownian Tables that aren't good
+
+objects_to_clear = readtable('objects_to_clear.csv');
+rowfun( @(x,y) signeFolders.clearTables( x, y{1} ), objects_to_clear, 'NumOutputs', 0, 'ErrorHandler', @(x,y,z) signeFolders.doNothing() )
+signeFolders.computeRelativeSegIdx();
+signeFolders.collectParameters();
+
+signeFolders.saveTables();
+%% Restart rc_obj from here (1/6/2020)
+
+%% Modifications to the folders object
+
+tic; rc_obj = resultsClusterClass( signeFolders ); toc;
+
+%% Handling text
+rc_obj.computeClusters( signeFolders );
+writetable( rc_obj.subfoldersTable, 'jan6_rc_subfolderstable.csv' )
+% Restored an older version of the subfolders table file
+rc_obj.subfoldersTable = readtable( 'nov21_rc_subfolderstable_after_mat_import.csv' );
+
+%% Pooling
+
+[unique_labels,idx_labels,newSuperclusters] = unique( rc_obj.subfoldersTable.Shortname );
+newSuperclustersTable = table( unique(newSuperclusters), unique_labels );
+newSuperclustersTable.Properties.VariableNames = {'Supercluster','Clustertext'};
+
+rc_obj.clustersTable = sortrows( newSuperclustersTable, 'Supercluster' );
+rc_obj.subfoldersTable.Supercluster = newSuperclusters;
+writetable( rc_obj.subfoldersTable, 'jan6_rc_subfolderstable_after_mat_import.csv' )
+
+%%
+
+rc_obj.getConsolidatedLifetimes( signeFolders );
+rc_obj.computeSegInfo();
+rc_obj.makeDiffusionTable( signeFolders );
+rc_obj.consolidateSuperclusterLifetimes( signeFolders );
+rc_obj.getSequences( signeFolders );
+
+%%
+cellfun(@(y) sum( cellfun( @(x) gt(numel(regexp(x{1},y)),0), mytables ) ), {'E','IC','IF','IS','CI','CF','CS','FI','FC','FS','SI','SC','SF'} )
+
+%%
+
+output = [];
+
+for objectnames = fields( mikeFolders.segs )'
+    
+    % Freely diffusing 
+    idx = rowfun(@(x) gt(numel( regexp(x{1},'(CD|ID)') ),0),...
+        accumulator_tables.(objectnames{1}).dictionaryTable(:,1),'OutputFormat','uniform');
+    d_after_c = sum( accumulator_tables.(objectnames{1}).dictionaryTable( find(idx==true) , 2 ).Count );
+    
+    idx = rowfun(@(x) gt(numel( regexp(x{1},'(D.*[C]$|D.*[I]$)') ),0),...
+        accumulator_tables.(objectnames{1}).dictionaryTable(:,1),'OutputFormat','uniform');
+    d_end_c = sum( accumulator_tables.(objectnames{1}).dictionaryTable( find(idx==true) , 2 ).Count );
+    
+    
+    idx = rowfun(@(x) gt(numel( regexp(x{1},'(C.*[D]$|I.*[D]$)') ),0),...
+        accumulator_tables.(objectnames{1}).dictionaryTable(:,1),'OutputFormat','uniform');
+    c_end_d = sum( accumulator_tables.(objectnames{1}).dictionaryTable( find(idx==true) , 2 ).Count );
+    
+    output = [output; [d_after_c,d_end_c,c_end_d]];
+end
+
+%% Output the lengths
+lengths = structfun( @(y) cellfun( @(x) numel(x), y.dictionaryTable.States ), rc_obj.sequencesTable , 'UniformOutput', false);
+for objs_ = fields(lengths)'
+    rc_obj.sequencesTable.( objs_{1} ).dictionaryTable.Length = lengths.( objs_{1} );
+end
+
+
+%% End of rc_obj loading
+
+%% If an HMM segment has a length of 1, what type of segment is it?
+% Single tracks are twice as likely to be in State 1 (fast state)
+
+this_title = 'All data (only single-segment tracks)'
+scs = rc_obj.superclusters();
+
+myltable = rc_obj.lifetimesTable( ismember( rc_obj.lifetimesTable.Supercluster, scs ), : );
+
+% Logical for only 1 track in seg
+only1track = eq(myltable.tracksInSeg,1);
+instate1 = eq(myltable.State,1);
+piedata = histc( myltable( only1track, : ).State, [1:2] );
+mypietable = table( {'Fast','Slow'}', {'State','State'}', piedata/sum(piedata) );
+mylegend = rowfun(@(x,y,z) sprintf('%s %s (%1.0f%s)',x{1},y{1},100*z,char(37)), mypietable,'OutputFormat','cell');
+
+p = pie( piedata, mylegend )
+p(1).EdgeColor = [1,1,1]
+p(3).LineWidth = 3
+set(gcf,'colormap',lines(2))
+title( this_title )
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\piechart_%s.svg', regexprep(this_title,'\s','_') ),'-dsvg')
+
+
+%% If an HMM segment has a length of 1, what type of segment is it?
+% Single tracks are twice as likely to be in State 1 (fast state)
+
+this_title = 'Myristolated data (only single-segment tracks)'
+scs = rc_obj.superclusters('myr');
+
+myltable = rc_obj.lifetimesTable( ismember( rc_obj.lifetimesTable.Supercluster, scs ), : );
+
+% Logical for only 1 track in seg
+only1track = eq(myltable.tracksInSeg,1);
+instate1 = eq(myltable.State,1);
+piedata = histc( myltable( only1track, : ).State, [1:2] );
+mypietable = table( {'Fast','Slow'}', {'State','State'}', piedata/sum(piedata) );
+mylegend = rowfun(@(x,y,z) sprintf('%s %s (%1.0f%s)',x{1},y{1},100*z,char(37)), mypietable,'OutputFormat','cell');
+
+p = pie( piedata, mylegend )
+p(1).EdgeColor = [1,1,1]
+p(3).LineWidth = 3
+set(gcf,'colormap',lines(2))
+title( this_title )
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\piechart_%s.svg', regexprep(this_title,'\s','_') ),'-dsvg')
+
+%% If an HMM segment has a length of 1, what type of segment is it?
+% Single tracks are twice as likely to be in State 1 (fast state)
+
+this_title = 'Non-Myristolated data (only single-segment tracks)'
+scs = rc_obj.superclusters('myr','not');
+
+myltable = rc_obj.lifetimesTable( ismember( rc_obj.lifetimesTable.Supercluster, scs ), : );
+
+% Logical for only 1 track in seg
+only1track = eq(myltable.tracksInSeg,1);
+instate1 = eq(myltable.State,1);
+piedata = histc( myltable( only1track, : ).State, [1:2] );
+mypietable = table( {'Fast','Slow'}', {'State','State'}', piedata/sum(piedata) );
+mylegend = rowfun(@(x,y,z) sprintf('%s %s (%1.0f%s)',x{1},y{1},100*z,char(37)), mypietable,'OutputFormat','cell');
+
+p = pie( piedata, mylegend )
+p(1).EdgeColor = [1,1,1]
+p(3).LineWidth = 3
+set(gcf,'colormap',lines(2))
+title( this_title )
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\piechart_%s.svg', regexprep(this_title,'\s','_') ),'-dsvg')
+
+%% If an HMM segment has a length of 1, what type of segment is it?
+% Single tracks are twice as likely to be in State 1 (fast state)
+
+this_title = 'ins4a data (only single-segment tracks)'
+scs = rc_obj.superclusters('ins4a');
+
+myltable = rc_obj.lifetimesTable( ismember( rc_obj.lifetimesTable.Supercluster, scs ), : );
+
+% Logical for only 1 track in seg
+only1track = eq(myltable.tracksInSeg,1);
+instate1 = eq(myltable.State,1);
+piedata = histc( myltable( only1track, : ).State, [1:2] );
+mypietable = table( {'Fast','Slow'}', {'State','State'}', piedata/sum(piedata) );
+mylegend = rowfun(@(x,y,z) sprintf('%s %s (%1.0f%s)',x{1},y{1},100*z,char(37)), mypietable,'OutputFormat','cell');
+
+p = pie( piedata, mylegend )
+p(1).EdgeColor = [1,1,1]
+p(3).LineWidth = 3
+set(gcf,'colormap',lines(2))
+title( this_title )
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\piechart_%s.svg', regexprep(this_title,'\s','_') ),'-dsvg')
+
+
+%%
+
+figure('color','w');
+details.title = 'Only 1-length state 1 (fast)';
+details.xlabel = '(s)';
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.3];
+data = rc_obj.lifetimesTable( and( instate1, only1track ), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf','binwidth',binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+%%
+
+figure('color','w');
+details.title = 'Only 1-length state 2 (slow)';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.3];
+data = rc_obj.lifetimesTable( and( eq(rc_obj.lifetimesTable.State,2), eq(rc_obj.lifetimesTable.tracksInSeg,1) ), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+
+%% Comparison with state 1 transitions
+
+figure('color','w');
+details.title = 'Transition tracks state 1 (fast)';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.5];
+data = rc_obj.lifetimesTable( logical(eq(rc_obj.lifetimesTable.State,1).*... 
+                                      gt(rc_obj.lifetimesTable.tracksInSeg,2).*...
+                                      eq(rc_obj.lifetimesTable.Identifier,0)), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+%% State 2 transitions
+
+figure('color','w');
+details.title = 'Transition tracks state 2 (slow)';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.8];
+data = rc_obj.lifetimesTable( logical(eq(rc_obj.lifetimesTable.State,2).*... 
+                                      gt(rc_obj.lifetimesTable.tracksInSeg,2).*...
+                                      eq(rc_obj.lifetimesTable.Identifier,0)), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+%% State 1 ends are shorter
+
+figure('color','w');
+details.title = 'Lifetime of last segment in track if state 1';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.3];
+data = rc_obj.lifetimesTable( and( eq(rc_obj.lifetimesTable.State,1), eq(rc_obj.lifetimesTable.Identifier,1) ), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+
+%% State 2 ends are longer
+
+figure('color','w');
+details.title = 'Lifetime of last segment in track if state 2';
+details.xlabel = '(s)'
+binwidth = 0.5;
+xlims = [0,50];
+ylims = [0,0.3];
+data = rc_obj.lifetimesTable( and( eq(rc_obj.lifetimesTable.State,2), eq(rc_obj.lifetimesTable.Identifier,1) ), : );
+Quantity = 'Lifetime';
+histogram( 0.15*data.(Quantity) , 'normalization','pdf', 'binwidth', binwidth);
+xlabel(sprintf('%s %s',Quantity,details.xlabel));
+box off; set(gca,'TickDir','out');
+title(details.title);
+xlim(xlims); ylim(ylims);
+
+%% Fraction of tracks that are single tracks
+
+mytitle = 'Fraction of tracks that are single tracks'
+
+data = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1)),:);
+figure('color','w'); bar( [0:24], histc( data.Supercluster, [0:24] )./histc( rc_obj.lifetimesTable.Supercluster, [0:24] ),'k' ); camroll(-90)
+set(gca,'XTick', unique(rc_obj.lifetimesTable.Supercluster), 'TickDir', 'out', 'XTickLabel', rc_obj.clustersTable.Clustertext); box off;
+ylabel(mytitle)
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\unordered_barchart_%s.svg', regexprep(mytitle,'\s','_') ),'-dsvg')
+
+
+%% Fraction of tracks that are single tracks (in state 1)
+
+mytitle = 'Fraction of tracks that are single tracks in State 1';
+
+data = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1).*(rc_obj.lifetimesTable.State==1)),:);
+figure('color','w'); bar( [0:24], histc( data.Supercluster, [0:24] )./histc( rc_obj.lifetimesTable.Supercluster, [0:24] ),'k' ); camroll(-90)
+set(gca,'XTick', unique(rc_obj.lifetimesTable.Supercluster), 'TickDir', 'out', 'XTickLabel', rc_obj.clustersTable.Clustertext); box off;
+ylabel(mytitle)
+ylim([0,1])
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\unordered_barchart_%s.svg', regexprep(mytitle,'\s','_') ),'-dsvg')
+
+
+
+%%
+mytitle = 'Fraction of tracks that are single tracks in State 2';
+
+data = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1).*(rc_obj.lifetimesTable.State==2)),:);
+figure('color','w'); bar( [0:24], histc( data.Supercluster, [0:24] )./histc( rc_obj.lifetimesTable.Supercluster, [0:24] ),'k' ); camroll(-90)
+set(gca,'XTick', unique(rc_obj.lifetimesTable.Supercluster), 'TickDir', 'out', 'XTickLabel', rc_obj.clustersTable.Clustertext); box off;
+ylabel(mytitle)
+ylim([0,1])
+
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\unordered_barchart_%s.svg', regexprep(mytitle,'\s','_') ),'-dsvg')
+
+
+%% Likelihood to be in State 1 versus State 2 if a single track
+
+mytitle = 'Likelihood to be in State 1 versus State 2 if a single track'
+
+data1 = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1).*(rc_obj.lifetimesTable.State==1)),:);
+data2 = rc_obj.lifetimesTable(logical((rc_obj.lifetimesTable.tracksInSeg==1).*(rc_obj.lifetimesTable.State==2)),:);
+
+figure('color','w'); bar( [0:24], histc( data1.Supercluster, [0:24] )./histc( data2.Supercluster, [0:24] ),'k' ); camroll(-90)
+set(gca,'XTick', unique(rc_obj.lifetimesTable.Supercluster), 'TickDir', 'out', 'XTickLabel', rc_obj.clustersTable.Clustertext); box off;
+ylabel(mytitle)
+ylim([0,10])
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\unordered_barchart_%s.svg', regexprep(mytitle,'\s','_') ),'-dsvg')
+
+
+%% Visualizing 2d map
+
+mytable = signeFolders.hmmsegs.obj_5.brownianTable
+[x1,y1] = deal( rowfun(@(x) mean(x{1}), mytable.State1(:,{'hmm_xSeg'}) ),...
+    rowfun(@(x) mean(x{1}), mytable.State1(:,{'hmm_ySeg'}) ));
+[x2,y2] = deal( rowfun(@(x) mean(x{1}), mytable.State2(:,{'hmm_xSeg'}) ),...
+    rowfun(@(x) mean(x{1}), mytable.State2(:,{'hmm_ySeg'}) ));
+
+figure; 
+subplot(1,2,1); imagesc( (1/numel(x1.Var1))*histcounts2(x1.Var1,y1.Var1,[64,64]) ); axis image; title('State 1 (all segments)')
+subplot(1,2,2); imagesc( (1/numel(x2.Var1))*histcounts2(x2.Var1,y2.Var1,[64,64]) ); axis image; title('State 2 (all segments)')
+%subplot(1,3,3); imagesc( histcounts2(x2.Var1,y2.Var1,[64,64])./histcounts2(x1.Var1,y1.Var1,[64,64]) ); axis image; title('Odds of State 1 versus State 2 (all segments)');
+
+set(gcf,'position',[55,280,670,330])

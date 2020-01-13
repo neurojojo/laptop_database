@@ -38,7 +38,7 @@ classdef tracksTableClass < handle
             % varargin:
             % 1: Directory
             % 2: Index #
-            % 3: options
+            % 3: optional_args
             %    -'FilesToFind'
      
             % Check for filenames
@@ -50,11 +50,11 @@ classdef tracksTableClass < handle
             
             obj_idx = varargin{2};
             
-            % Check for an options structure and parse it if exists
-            if nargin>2; options = varargin{3}; end
+            % Check for an optional_args structure and parse it if exists
+            if nargin>2; optional_args = varargin{3}; end
             
-            if ~isempty( find( strcmp('FilesToFind',options) == 1 ) );
-                FilesToFind = options{ 1 + find( strcmp( 'FilesToFind', options ) == 1 )}; else FilesToFind = [];
+            if ~isempty( find( strcmp('FilesToFind',optional_args) == 1 ) );
+                FilesToFind = optional_args{ 1 + find( strcmp( 'FilesToFind', optional_args ) == 1 )}; else FilesToFind = [];
             end
             
             % Create metadata based on the input

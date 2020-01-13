@@ -11,8 +11,8 @@ classdef brownianTableClass < handle
     end
     
     properties(GetAccess='private',Constant)
-        varTypes = repmat({'double'},1,7);
-        varNames = {'trackIdx','segIdx','hmmSegIdx','hmmSegStart','abs_hmmSegStart','hmm_xSeg','hmm_ySeg'};
+        varTypes = repmat({'double'},1,9);
+        varNames = {'trackIdx','segIdx','hmmSegIdx','hmmSegStart','abs_hmmSegStart','hmm_xSeg','hmm_ySeg','segType','tracksInSeg'};
     end
     
     methods
@@ -26,11 +26,13 @@ classdef brownianTableClass < handle
             if strcmp( class(varargin{1}),'double')
                 obj.metadata.obj_idx = varargin{1};
                 obj.metadata.fileStruct = {};
-                obj.metadata.Type = 'tracks';
+                obj.metadata.Type = 'brownian';
                 obj.metadata.DiffCoeff = [NaN, NaN];
-                obj.metadata.Comments = 'Empty tracks';
+                obj.metadata.Comments = varargin{2};
                 if nargin>1; if strcmp( class(varargin{2}), 'char' ); obj.metadata.Comments = varargin{2}; end; end
-                for i = 1:obj.Nstates; obj.brownianTable.(sprintf('State%i',i)) = table('Size',[0 numel(obj.varNames)],'VariableTypes',obj.varTypes,'VariableNames',obj.varNames); end
+                    for i = 1:obj.Nstates; 
+                        obj.brownianTable.(sprintf('State%i',i)) = table('Size',[0 numel(obj.varNames)],'VariableTypes',obj.varTypes,'VariableNames',obj.varNames); 
+                    end
                 return
             end
             
@@ -38,7 +40,7 @@ classdef brownianTableClass < handle
             obj_idx = varargin{2}; end
             
             % Create default metadata
-            obj.metadata = segsTableObj.metadata;
+            obj.metadata.fileStruct = {};
             obj.metadata.Type = 'brownian';
             obj.metadata.obj_idx = obj_idx;
             
