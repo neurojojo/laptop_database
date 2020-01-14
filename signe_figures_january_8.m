@@ -7,7 +7,7 @@
 % (2) C->F and C->I are similarly likely
 % (3) Going from I->C is almost 3x as likely as C->I
 
-query = 'IC';
+query = 'IS';
 
 for this_field = fields(rc_obj.sequencesTable)'
     tmp = rc_obj.sequencesTable.(this_field{1}).dictionaryTable;

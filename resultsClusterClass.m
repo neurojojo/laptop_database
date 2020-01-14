@@ -350,6 +350,7 @@ classdef resultsClusterClass < handle
         end
         
         function consolidateSuperclusterLifetimes( obj, varargin )
+            
             occupancy = @(x,y) sum( x ) / (sum(x)+sum(y));
             SCstable = table('Size',[ size(obj.subfoldersTable,1) , 8 ],'VariableNames',{'Supercluster','Obj_Idx','Lifetime1','Lifetime2','Occupancy1','Occupancy2','State1Tracks','State2Tracks'},'VariableTypes',repmat({'double'},1,8) );
             
@@ -374,9 +375,10 @@ classdef resultsClusterClass < handle
                 for j = my_objs'
                     my_lts1 = mytable( find( (mytable.State == 1)&(mytable.Obj_Idx == j) ), : ).Lifetime;
                     my_lts2 = mytable( find( (mytable.State == 2)&(mytable.Obj_Idx == j) ), : ).Lifetime;
+                    
                     SCstable(count,:) = table( i, j, mean(my_lts1), mean(my_lts2),...
                                                        occupancy(my_lts1,my_lts2), occupancy(my_lts2,my_lts1),...
-                                                       numel(my_lts1), numel(my_lts2) );
+                                                       numel(my_lts1), numel(my_lts2) );                   
                     count=count+1;
                 end
             end
