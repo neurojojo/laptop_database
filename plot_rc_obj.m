@@ -1,4 +1,4 @@
-function fig=plot_rc_obj( rc_obj, ...
+function info_table=plot_rc_obj( rc_obj, ...
     remove_ends,...
     minlength,...
     Quantity1,...
@@ -9,12 +9,31 @@ function fig=plot_rc_obj( rc_obj, ...
     sorting,...
     colors,...
     query,...
-    newfig)
+    newfig,...
+    only1length)
+    
+    if and(remove_ends,only1length)
+        fprintf('Cannot remove ends and also only include single segments!\n');
+        return
+    end
     
     if remove_ends
-        rc_obj.consolidateSuperclusterLifetimes('remove_ends',minlength); removeflag=sprintf('removed (length %i)',minlength); 
-    else; rc_obj.consolidateSuperclusterLifetimes(); removeflag=''; end;
+        rc_obj.consolidateSuperclusterLifetimes('remove_ends',minlength);
+        removeflag=sprintf('removed (length %i)\n',minlength); 
+        fprintf('%s',removeflag);
+    else; end
 
+    if only1length
+        rc_obj.consolidateSuperclusterLifetimes('only1length');
+        removeflag=sprintf('Only 1 length segments\n'); 
+        fprintf('%s',removeflag);
+    else; end
+
+    if and( not(only1length), not(remove_ends) )
+        fprintf('Including all segment types\n');
+        rc_obj.consolidateSuperclusterLifetimes(); removeflag=''; 
+    end
+    
     if or(newfig,isempty( findobj('Type','Figure') ))
         close all
         f=figure('color','w'); ax_ = axes('parent',f,'tickdir','out','xlim',[0,0.7],'ylim',[0,0.2]); 
@@ -76,25 +95,30 @@ function fig=plot_rc_obj( rc_obj, ...
     crossTable.color = [1:size(crossTable,1)]';
     crossTable.colors = repmat( colors, size(crossTable,1), 1);
 
-    rowfun( @crossObj, crossTable );
+    obj1 = rowfun( @crossObj, crossTable );
 
     xlabel(sprintf('%s',Quantity1))
     ylabel(sprintf('%s',Quantity2))
 
     set(gca,'Xlim',xlims,'YLim',ylims);
     set(gcf,'WindowState','maximized')
-    textToTop(gca);
-
-    figname = regexprep(figname,'\(|\)|(\|)','_');
-    if remove_ends; title(sprintf('Ends removed (min length=%i)',minlength+1)); else; title('Ends kept'); end
     
-    print( gcf, sprintf('figure_%s_%s_%s.png',figdetails,figname,removeflag), '-dpng', '-r0' )
+    figname = regexprep(figname,'\(|\)|(\|)','_');
+    if remove_ends; title(sprintf('Transitioning segments (min length=%i)',minlength+1)); else; title('Single segments'); end
+    
+    %Remove if you want to print
+    %print( gcf, sprintf('figure_%s_%s_%s.png',figdetails,figname,removeflag), '-dpng', '-r0' )
     
     % Get occupancy stats
     mytable = rc_obj.diffusionTableNaNs;
     get_supercluster_occupancies = @( supercluster ) nanmean(mytable(mytable.Supercluster == supercluster,:).Occupancy1);
     forbars = arrayfun( get_supercluster_occupancies, Superclusters, 'UniformOutput', true );
+
+    % Produce an info table for coloring and sorting
+    info_table = table('size',[numel(obj1),2],'variableTypes',{'double','cell'},'variablenames',{'Superclusters','Color'} );
+    for i = 1:numel(obj1); info_table(i,:) = table( obj1(i,:).Var1.label, {[obj1(i,:).Var1.color]} ); end
+   
+    info_table = { info_table }; % Cell-ify in order to be handled by fun operations
     
-    fig = get(gcf);
 end
 

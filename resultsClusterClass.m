@@ -351,7 +351,7 @@ classdef resultsClusterClass < handle
         
         function consolidateSuperclusterLifetimes( obj, varargin )
             
-            occupancy = @(x,y) sum( x ) / (sum(x)+sum(y));
+            occupancy = @(x,y) nansum( x ) / (nansum(x)+nansum(y));
             SCstable = table('Size',[ size(obj.subfoldersTable,1) , 8 ],'VariableNames',{'Supercluster','Obj_Idx','Lifetime1','Lifetime2','Occupancy1','Occupancy2','State1Tracks','State2Tracks'},'VariableTypes',repmat({'double'},1,8) );
             
             % Check for remove_ends flag
@@ -359,7 +359,7 @@ classdef resultsClusterClass < handle
                 remove_ends_flag = 1;
                 remove_ends_min = varargin{ find(strcmp(varargin,'remove_ends')==1)+1 };
                 mytable = obj.lifetimesTable( (obj.lifetimesTable.tracksInSeg>remove_ends_min) & (obj.lifetimesTable.Identifier==0) , : );
-                fprintf('Removed end tracks from consolidated lifetimes variable and only took tracks longer than %i\n', remove_ends_min);
+                fprintf('consolidatedSuperclusterLifetimes: Removed end tracks from consolidated lifetimes variable and only took tracks longer than %i\n', remove_ends_min);
             else 
                 mytable = obj.lifetimesTable;
             end
@@ -367,6 +367,7 @@ classdef resultsClusterClass < handle
             % Check for only1length flag
             if sum(strcmp(varargin,'only1length'))>0
                 mytable = obj.lifetimesTable( (obj.lifetimesTable.tracksInSeg==1 ), : );
+                fprintf('consolidatedSuperclusterLifetimes: Using only single tracks\n');
             end
             
             count=1;
@@ -376,14 +377,14 @@ classdef resultsClusterClass < handle
                     my_lts1 = mytable( find( (mytable.State == 1)&(mytable.Obj_Idx == j) ), : ).Lifetime;
                     my_lts2 = mytable( find( (mytable.State == 2)&(mytable.Obj_Idx == j) ), : ).Lifetime;
                     
-                    SCstable(count,:) = table( i, j, mean(my_lts1), mean(my_lts2),...
+                    SCstable(j,:) = table( i, j, mean(my_lts1), mean(my_lts2),...
                                                        occupancy(my_lts1,my_lts2), occupancy(my_lts2,my_lts1),...
-                                                       numel(my_lts1), numel(my_lts2) );                   
-                    count=count+1;
+                                                       numel(my_lts1), numel(my_lts2) );
                 end
             end
+            
             SCstable.Properties.VariableNames={'Supercluster','Obj_Idx','Lifetime1','Lifetime2','Occupancy1','Occupancy2','State1Tracks','State2Tracks'};
-            SCstable = sortrows(SCstable,'Obj_Idx');
+            %SCstable = sortrows(SCstable,'Obj_Idx');
             
             obj.consolidatedLifetimes = SCstable;
             

@@ -24,6 +24,7 @@ classdef crossObj < handle
                 line( [xcenter,xcenter], [y0, y1], 'color', colors(color,:), 'parent', parent, 'linewidth', 4 );
                 
                 text( x0, y1, legend, 'color', colors(color,:), 'parent', parent );
+                obj.color = colors(color,:);
                 [obj.label,obj.x0,obj.x1,obj.xcenter,obj.y0,obj.y1,obj.ycenter,obj.parent] = deal (label,x0,x1,xcenter,y0,y1,ycenter,parent);
             end
             

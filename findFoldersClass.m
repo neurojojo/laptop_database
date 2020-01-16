@@ -273,6 +273,18 @@ classdef findFoldersClass < handle
             
         end
         
+        function getTrackLengths( obj )
+           
+            % For all the objects in the structure %
+            for this_obj = fields( obj.tracks )'
+                
+                obj.tracks.(this_obj{1}).tracksTable.trackLength = arrayfun( @(idx) numel( obj.tracks.(this_obj{1}).tracksTable(idx,:).x{1} ), ...
+                    [1:size(obj.tracks.(this_obj{1}).tracksTable,1)] )';
+                
+            end
+            
+        end
+        
         % House-keeping functions %
         
         function varargout = doNothing(obj,varargin)
@@ -283,7 +295,8 @@ classdef findFoldersClass < handle
             varargout{1}=repmat(NaN,1,varargin{1});
         end
         
-        
+        % Overloaded functions %
+
         
     end
     

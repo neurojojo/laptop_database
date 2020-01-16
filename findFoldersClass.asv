@@ -118,15 +118,14 @@ classdef findFoldersClass < handle
             all_parameters = table(); for this_table = parameters_table'; if istable(this_table{1}); all_parameters = [ all_parameters; this_table{1} ]; 
                 else
                     emptyrow = array2table( nan(1, obj.nparams), 'VariableNames', all_parameters.Properties.VariableNames );
-                    emptyrow.brownScaling, emptyrow.ampRatioLimit,emptyrow.linScaling = deal( [nan, nan], [nan, nan], [nan, nan] );
+                    [emptyrow.brownScaling, emptyrow.ampRatioLimit,emptyrow.linScaling] = deal( [nan, nan], [nan, nan], [nan, nan] );
                     all_parameters = [ all_parameters; emptyrow ]; 
                 end
             end
             all_parameters.brownStdMult = rowfun(@(x) {num2str(x{1}')}, all_parameters(:,4) );
             all_parameters.linStdMult = rowfun(@(x) {num2str(x{1}')}, all_parameters(:,11) );
             
-            obj.trackingParametersTable = [allsubfolders, all_parameters];
-            obj.trackingParametersTable.Properties.VariableNames{1} = 'Subfolder';
+            obj.trackingParametersTable = all_parameters;
             
         end
         %output = arrayfun( @(year) rowfun(@(x) ~isempty( regexp(x{1}, sprintf('%i',year) ) ), obj.subfolderTable(:,1) ), [2016:2019], 'UniformOutput', false );
@@ -198,14 +197,6 @@ classdef findFoldersClass < handle
             end
         end
         % End of 12/5 additions
-        
-        function varargout = doNothing(obj,varargin)
-            varargout{1}=[];
-        end
-        
-        function varargout = returnNaN(obj,varargin)
-            varargout{1}=repmat(NaN,1,varargin{1});
-        end
         
         function makeHMMSegObjs(obj)
             
@@ -282,6 +273,40 @@ classdef findFoldersClass < handle
             
         end
         
+        function getTrackLengths( obj )
+           
+            % For all the objects in the structure %
+            for this_obj = fields( obj.tracks )
+                arrayfun( @(idx) numel( obj.tracks.(this_obj).tracksTable(idx,:).x{1} ), [1:10] ), signeFolders.tracks , 'UniformOutput', false);
+            end
+            
+        end
+        
+        % House-keeping functions %
+        
+        function varargout = doNothing(obj,varargin)
+            varargout{1}=[];
+        end
+        
+        function varargout = returnNaN(obj,varargin)
+            varargout{1}=repmat(NaN,1,varargin{1});
+        end
+        
+        % Overloaded functions %
+        
+        function plot(obj,objIdx,trackIdx,varargin)
+            
+            % This is a great idea below %
+           
+            
+           thisplot = plot( obj.tracks.(sprintf('obj_%i',objIdx)).tracksTable(trackIdx,:).x{1},...
+                 obj.tracks.(sprintf('obj_%i',objIdx)).tracksTable(trackIdx,:).y{1} ); 
+             
+           if ~isempty(varargin)
+               arrayfun( @(x) set( thisplot, varargin{2*x-1}, varargin{2*x} ), [1:numel(varargin)/2] );
+           end
+           
+        end
         
     end
     

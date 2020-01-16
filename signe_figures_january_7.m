@@ -18,6 +18,8 @@
 % Longest length segments possible
 f=structfun( @(x) max(x.dictionaryTable.Length), rc_obj.sequencesTable )
 rc_obj.makeBoxplot( f )
+ylabel('Longest length segment possible')
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\boxplot_longest_segs.svg', regexprep(this_title,'\s','_') ),'-dsvg')
 
 %% Occurance-weighted average of # states per trajectory
 
@@ -25,17 +27,23 @@ f=structfun( @(x) nansum( x.dictionaryTable.Count.*x.dictionaryTable.Length )/na
 rc_obj.makeBoxplot( f );
 ylabel('Occurance-weighted average of # states per trajectory')
 
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\boxplot_occurence_weighted_average.svg', regexprep(this_title,'\s','_') ),'-dsvg')
+
 %% The total number of single state trajectories
 
 f=structfun( @(x) nansum( x.dictionaryTable.Count( eq(x.dictionaryTable.Length,1) ))/nansum(x.dictionaryTable.Count), rc_obj.sequencesTable );
 rc_obj.makeBoxplot( f );
 ylabel('Percentage of trajectories that are 1 state')
 
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\boxplot_1state_percentage.svg', regexprep(this_title,'\s','_') ),'-dsvg')
+
 %% The total number of non-single state trajectories
 
 f=structfun( @(x) nansum( x.dictionaryTable.Count( gt(x.dictionaryTable.Length,1) ))/nansum(x.dictionaryTable.Count), rc_obj.sequencesTable );
 rc_obj.makeBoxplot( f );
 ylabel('Percentage of trajectories that are >1 state')
+
+print(gcf,sprintf('c:\\laptop_database\\signe_figures_jan14\\boxplot_gt1state_percentage.svg', regexprep(this_title,'\s','_') ),'-dsvg')
 
 %% What are the distributions of single state trajectories
 
@@ -62,6 +70,7 @@ set(gca,'XTick',[1:4],'XTickLabel', single_states([2,6,4,1]) ,'TickDir','out',..
     'YTick',[1:numel(lbls_myfields)],'YTickLabel',lbls_myfields,'FontSize',8,'YTickLabelRotation',90,'Position',[.02,.25,.95,.75]);
 camroll(90);
 
+
 %% The total number of non-single state trajectories
 
 for i = 1:numel(single_states)
@@ -75,6 +84,9 @@ for i = 1:numel(single_states)
     ylim([0,.5])
     grid on
     
+    filename = sprintf('c:\\laptop_database\\signe_figures_jan14\\boxplot_state_%s_percentage.svg', single_states{i} );
+    print(gcf,filename,'-dsvg')
+
 end
 
 %% Creating a GLM based on counts_matrix as predictors

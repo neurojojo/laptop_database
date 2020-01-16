@@ -90,6 +90,21 @@ end
 
 %% End of rc_obj loading
 
+
+%% Start from new
+load('C:\MATworkspaces\allfolders_06-Jan-2020.mat'); signeFolders = obj;
+load('C:\MATworkspaces\rc_obj_13-Jan-2020.mat '); rc_obj = obj;
+
+%% 
+figure('color','w'); hold on;
+arrayfun( @(x) plot(signeFolders,8,x,'LineWidth',1), [1:1000] )
+set(gca,'XColor','w','YColor','w')
+
+figure('color','w'); hold on;
+arrayfun( @(x) plot(signeFolders,8,x,'LineWidth',1), [1:1000] )
+set(gca,'XColor','w','YColor','w')
+
+
 %% Visualizing 2d map
 
 mytable = signeFolders.hmmsegs.obj_5.brownianTable

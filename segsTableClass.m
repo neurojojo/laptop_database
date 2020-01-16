@@ -130,8 +130,38 @@ classdef segsTableClass < handle
         function showFilename(obj)
             fprintf('%s\n',obj.filename);
         end
+        
+        
+        
+    % Overloaded functions %
+
+    function hits = find(obj,search_query)
+
+        equality_type = cell2mat(regexp(search_query,'(<=)|(>=)|==|(<>)|(<)|(>)','match'));
+        value = regexp( search_query, '(\d)$', 'match' ); value = str2double(value{1});
+        parameter = regexp( search_query, '[a-zA-Z]+', 'match' ); parameter = parameter{1};
+
+        switch equality_type;
+            case '<'
+                hits = find( lt(obj.segsTable.(parameter), value) == 1 );
+            case '>'
+                hits = find( gt(obj.segsTable.(parameter), value) == 1 );
+            case '<='
+                hits = find( le(obj.segsTable.(parameter), value) == 1 );
+            case '>='
+                hits = find( ge(obj.segsTable.(parameter), value) == 1 );
+            case '<>'
+                hits = find( ne(obj.segsTable.(parameter), value) == 1 );
+            case '=='
+                hits = find( eq(obj.segsTable.(parameter), value) == 1 );
+        end
+
     end
     
+    end
+    
+        
+        
     methods(Static)
         
         function output_tbl = expandFromCol(my_tbl, col)

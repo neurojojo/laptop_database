@@ -173,22 +173,9 @@ classdef tracksTableClass < handle
             
         function hits = find(obj,search_query)
             
-            equality_type = cell2mat(regexp(search_query,'(<=)|(>=)|(<>)|(<)|(>)','match'));
-            value = regexp( search_query, '(\d)$' );
-            parameter = regexp( search_query, '[a-zA-Z]+', 'match' ); parameter = parameter{1};
-            
-            switch equality_type;
-                case '<'
-                    hits = find( lt(obj.tracksTable.(parameter), value) == 1 );
-                case '>'
-                    hits = find( gt(obj.tracksTable.(parameter), value) == 1 );
-                case '<='
-                    hits = find( le(obj.tracksTable.(parameter), value) == 1 );
-                case '>='
-                    hits = find( ge(obj.tracksTable.(parameter), value) == 1 );
-                case '<>'
-                    hits = find( ne(obj.tracksTable.(parameter), value) == 1 );
-            end
+            switch regexp
+            if regexp('a<1','(<=)|(>=)|(<>)|(<)|(>)','match')
+            hits = find( obj.tracksTable.trackLength < search_query );
             
         end
         
