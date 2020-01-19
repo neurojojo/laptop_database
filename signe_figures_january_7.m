@@ -14,7 +14,6 @@
 % (5) Myristolation places tracks into 'F' state while all other tracks are
 % equally likely
 
-
 % Longest length segments possible
 f=structfun( @(x) max(x.dictionaryTable.Length), rc_obj.sequencesTable )
 rc_obj.makeBoxplot( f )

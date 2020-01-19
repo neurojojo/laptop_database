@@ -174,7 +174,7 @@ classdef tracksTableClass < handle
         function hits = find(obj,search_query)
             
             equality_type = cell2mat(regexp(search_query,'(<=)|(>=)|(<>)|(<)|(>)','match'));
-            value = regexp( search_query, '(\d)$' );
+            value = str2double(regexp( search_query, '(\d+)$', 'match' ));
             parameter = regexp( search_query, '[a-zA-Z]+', 'match' ); parameter = parameter{1};
             
             switch equality_type;
