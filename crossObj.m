@@ -15,6 +15,7 @@ classdef crossObj < handle
     methods
         function obj = crossObj( label, Nentries, x0, xcenter, x1, y0, ycenter, y1, color, maxColor, parent, legend, colors )
             
+            if iscell(colors); colors = colors{1}; end
             colors = palette( colors );
             
             % Only plot non-NaN entries

@@ -20,3 +20,29 @@ num_segs_2 = struct2array(num_segs_2)';
 
 rc_obj.makeBoxplot( num_segs_1 );
 rc_obj.makeBoxplot( num_segs_2 );
+
+%% Putting together a plot
+
+
+query = {{'Gi1 D2 ins4a','not quinpirole','not sulpiride'};...
+         {'Gi1 D2 ins4a', 'quinpirole'};...
+         {'Gi1 D2 ins4a','Sulpiride'}};
+     
+query = {{'2400 ng'};...
+        {'Gi','not D2','not Lat'}};
+    
+query = {{'D2','1200 ng', 'no treat', 'not PTXR'};
+    {'PTXR','1200 ng', 'no treat'}};
+
+
+query = {{'Gi','D2','not ins4a', 'no treat'};...
+         {'Myr'};...
+         {'Gi1 D2 Quinpirole'};...
+         {'Gi1 D2 PTXR Quinpirole'}};
+    
+query = { {'Gi','not D2','not ins4a', 'no treat'};...
+          {'Gi','not D2','not ins4a', 'quinpirole'};...
+          {'Gi','D2','2400'};...
+          {'Myr'} };
+
+  
