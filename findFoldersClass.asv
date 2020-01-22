@@ -183,20 +183,71 @@ classdef findFoldersClass < handle
         
         % This was added 12/5 and needs to be more properly integrated
         function computeRelativeSegIdx(obj)
+
             obj.segs = structfun( @(x) obj.expand_DC_MSS_Segs(x), obj.segs,'ErrorHandler',@(x,y) obj.doNothing ,'UniformOutput',false);
+            
         end
         
         function output = expand_DC_MSS_Segs(obj,input_structure)
             try
-                toexpand = histc( input_structure.segsTable.trackIdx, [1:max(input_structure.segsTable.trackIdx)] );
-                input_structure.segsTable.segIdx_relative = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) );
-                input_structure.segsTable.segIdx_identifier = [ eq( diff( input_structure.segsTable.segIdx_relative,1 ), 0 ); 0 ];
+                toexpand = histc( input_structure.segsTable.trackIdx, [1:max(input_structure.segsTable.trackIdx)] ); % Find tracks with multiple segments (they will not be 1 entries in histogram)
+                input_structure.segsTable.segIdx_relative = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) ); % Give each segment its relative index
+                input_structure.segsTable.singleSegmentTrack_identifier = [ eq( diff( input_structure.segsTable.segIdx_relative,1 ), 0 ); 0 ];
+                
+                % This next line does a lot of work %
+                % Segment is the ONLY segment in a track: zero
+                % Segment is the FIRST segment in a track: negative one
+                % Segment is MIDDLE segment in a track: two
+                % Segment is the LAST segment in a track: positive one
+                
+                input_structure.segsTable.multiSegmentTrack_identifier = cell2mat( arrayfun( @(x) [repmat(ne(x,1),1,min(1,x)),repmat(2,1,x-2),repmat(-1,1,min(1,x-1))]', toexpand,'UniformOutput',false) );
                 output = input_structure;
             catch
                 output = input_structure;
             end
         end
         % End of 12/5 additions
+        
+        
+        function mergeAllSegments(obj)
+            
+            obj.segs = structfun( @(x) obj.expand_DC_MSS_Segs(x), obj.segs,'ErrorHandler',@(x,y) obj.doNothing ,'UniformOutput',false);
+            
+        end
+        
+        function mergeAllSegments(obj)
+            
+            objectnames{1} = 'obj_4';
+            tmp = sortrows( outerjoin( obj.segs.(objectnames{1}).segsTable(:,{'trackIdx','segIdx','segType'}),...
+                            [obj.hmmsegs.(objectnames{1}).brownianTable.State1(:,{'trackIdx','segIdx','hmmSegIdx','hmmSegStart','segType'});...
+                            obj.hmmsegs.(objectnames{1}).brownianTable.State2(:,{'trackIdx','segIdx','hmmSegIdx','hmmSegStart','segType'})],...
+                            'Keys', {'trackIdx','segIdx'} ), {'trackIdx_left','segIdx_left','hmmSegStart'} );
+            
+            
+            % Initialize the column based on the output of DC-MSS
+            tmp.segType_combined = tmp.segType_left; 
+            % If DC-MSS returns a NaN value, set this value to -1
+            tmp.segType_combined( isnan(tmp.segType_left) ) = -1;
+            % If DC-MSS returns 2, but contains a NaN value in the x- or y-coordinates
+            tmp.segType_combined( and(tmp.segType_left==2, isnan(tmp.trackIdx_right)) ) = -2; 
+            % If the DC-MSS returns 2, does not contain a NaN value
+            % imputes the segment type from the segType_right column
+            tmp.segType_combined( and(tmp.segType_left==2, ~isnan(tmp.trackIdx_right)) ) = tmp.segType_right( and(tmp.segType_left==2, ~isnan(tmp.trackIdx_right)) );
+            tmp = tmp(:,{'trackIdx_left','segIdx_left','hmmSegIdx','segType_combined'});
+            
+            toexpand = histc( tmp.trackIdx_left, [1:max(tmp.trackIdx_left)] ); % Find tracks with multiple segments (they will not be 1 entries in histogram)
+            tmp.mergedIdx = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) ); % Give each segment its relative index
+            
+            % This next line does a lot of work %
+            % Segment is the ONLY segment in a track: zero
+            % Segment is the FIRST segment in a track: negative one
+            % Segment is MIDDLE segment in a track: two
+            % Segment is the LAST segment in a track: positive one
+                
+            tmp.multiSegmentTrack_identifier = cell2mat( arrayfun( @(x) [repmat(ne(x,1),1,min(1,x)),repmat(2,1,x-2),repmat(-1,1,min(1,x-1))]', toexpand,'UniformOutput',false) );
+            
+                
+        end
         
         function makeHMMSegObjs(obj)
             
@@ -249,7 +300,7 @@ classdef findFoldersClass < handle
             
             for I = myobjs'
                 thisObj = I{1};
-                % Currently this only workr two state models
+                % Currently this only works for two state models
                 if and( ~strcmp( obj.hmmsegs.(thisObj).metadata.Type, 'Error' ), isfield( obj.hmmsegs.(thisObj).brownianTable, 'State1' ) ); 
                     tmp = [ obj.hmmsegs.(thisObj).brownianTable.State1;obj.hmmsegs.(thisObj).brownianTable.State2];
                     segs = tmp.segIdx;
@@ -276,8 +327,11 @@ classdef findFoldersClass < handle
         function getTrackLengths( obj )
            
             % For all the objects in the structure %
-            for this_obj = fields( obj.tracks )
-                arrayfun( @(idx) numel( obj.tracks.(this_obj).tracksTable(idx,:).x{1} ), [1:10] ), signeFolders.tracks , 'UniformOutput', false);
+            for this_obj = fields( obj.tracks )'
+                
+                obj.tracks.(this_obj{1}).tracksTable.trackLength = arrayfun( @(idx) numel( obj.tracks.(this_obj{1}).tracksTable(idx,:).x{1} ), ...
+                    [1:size(obj.tracks.(this_obj{1}).tracksTable,1)] )';
+                
             end
             
         end
@@ -293,20 +347,7 @@ classdef findFoldersClass < handle
         end
         
         % Overloaded functions %
-        
-        function plot(obj,objIdx,trackIdx,varargin)
-            
-            % This is a great idea below %
-           
-            
-           thisplot = plot( obj.tracks.(sprintf('obj_%i',objIdx)).tracksTable(trackIdx,:).x{1},...
-                 obj.tracks.(sprintf('obj_%i',objIdx)).tracksTable(trackIdx,:).y{1} ); 
-             
-           if ~isempty(varargin)
-               arrayfun( @(x) set( thisplot, varargin{2*x-1}, varargin{2*x} ), [1:numel(varargin)/2] );
-           end
-           
-        end
+
         
     end
     

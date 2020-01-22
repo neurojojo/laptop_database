@@ -119,3 +119,4 @@ subplot(1,2,2); imagesc( (1/numel(x2.Var1))*histcounts2(x2.Var1,y2.Var1,[64,64])
 %subplot(1,3,3); imagesc( histcounts2(x2.Var1,y2.Var1,[64,64])./histcounts2(x1.Var1,y1.Var1,[64,64]) ); axis image; title('Odds of State 1 versus State 2 (all segments)');
 
 set(gcf,'position',[55,280,670,330])
+

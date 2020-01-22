@@ -545,13 +545,13 @@ classdef resultsClusterClass < handle
                     % If the DC-MSS returns 2, does not contain a NaN value
                     % imputes the segment type from the segType_right column
                     tmp.segType_combined( and(tmp.segType_left==2, ~isnan(tmp.trackIdx_right)) ) = tmp.segType_right( and(tmp.segType_left==2, ~isnan(tmp.trackIdx_right)) );
-                    tmp = tmp(:,{'trackIdx_left','segIdx_left','xSeg','hmm_xSeg','hmmSegIdx','segType_combined'});
+                    tmp = tmp(:,{'trackIdx_left','segIdx_left','hmmSegIdx','segType_combined'});
 
                     toexpand = histc( tmp.trackIdx_left, [1:max(tmp.trackIdx_left)] ); % Find tracks with multiple segments (they will not be 1 entries in histogram)
                     tmp.mergedIdx = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) ); % Give each segment its relative index
                     
                     tmp.Lifetime_seg = cellfun( @(x) numel(x), tmp.xSeg ); 
-                    tmp.Lifetime_hmmseg = cellfun( @(x) numel(x), tmp.hmm_xSeg );
+                    tmp.Lifetime_hmmseg = cellfun( @(x) numel(x), tmp.hmm_xSeg ) ];
                     % This next line does a lot of work %
                     % Segment is the ONLY segment in a track: zero
                     % Segment is the FIRST segment in a track: negative one

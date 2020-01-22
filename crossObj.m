@@ -20,8 +20,8 @@ classdef crossObj < handle
             % Only plot non-NaN entries
             if eq( sum(isnan([x0,xcenter,x1,y0,ycenter,y1])), 0 ) & ((x1-x0)>0 & (y1-y0)>0)
                 
-                line( [x0,x1], [ycenter, ycenter], 'color', colors(color,:), 'parent', parent, 'linewidth', 4 );
-                line( [xcenter,xcenter], [y0, y1], 'color', colors(color,:), 'parent', parent, 'linewidth', 4 );
+                line( [x0,x1], [ycenter, ycenter], 'color', colors(color,:), 'parent', parent, 'linewidth', 8 );
+                line( [xcenter,xcenter], [y0, y1], 'color', colors(color,:), 'parent', parent, 'linewidth', 8 );
                 
                 text( x0, y1, legend, 'color', colors(color,:), 'parent', parent );
                 obj.color = colors(color,:);

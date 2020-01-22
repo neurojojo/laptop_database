@@ -17,7 +17,7 @@ function plot_rc_obj_wrapper( rc_obj, plot_options )
     xlims = [0, 100]; ylims = [0, 100]; newfig=0;
     Quantity1 = 'Lifetime1'; 
     Quantity2 = 'Lifetime2'; 
-    minlength = 3;
+    minlength = 0; % This means that there is 1 F and 1 S. The real minlength is 2.
     figdetails = 'Lifetime_xy_';
     
     % This plots the crosses AND collects the data for the rc_obj property

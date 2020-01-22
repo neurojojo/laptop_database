@@ -195,21 +195,24 @@ classdef tracksTableClass < handle
                 
         function plot(obj,trackIdx,varargin)
             
+           if nargin==1
+               trackIdx = unique(obj.tracksTable.id);
+           end
+           
            % Plot multiple tracks if they're present
            if gt(numel( trackIdx ),1)
                set(gca,'NextPlot','add');
                thisplot = arrayfun(@(thisIdx) plot( obj.tracksTable(thisIdx,:).x{1},...
                      obj.tracksTable(thisIdx,:).y{1} ), trackIdx ); 
-               
            else
                
                thisplot = plot( obj.tracksTable(trackIdx,:).x{1},...
                      obj.tracksTable(trackIdx,:).y{1} ); 
-                 
-               if ~isempty(varargin)
-                    arrayfun( @(x) set( thisplot, varargin{2*x-1}, varargin{2*x} ), [1:numel(varargin)/2] );
-               end
+           end
            
+           % Check for optional arguments
+           if ~isempty(varargin)
+                arrayfun( @(thisline) arrayfun( @(x) set( thisline, varargin{2*x-1}, varargin{2*x} ), [1:numel(varargin)/2] ), thisplot );
            end
            
            

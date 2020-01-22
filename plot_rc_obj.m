@@ -38,7 +38,7 @@ function info_table=plot_rc_obj( rc_obj, ...
         close all
         f=figure('color','w'); ax_ = axes('parent',f,'tickdir','out','xlim',[0,0.7],'ylim',[0,0.2]); 
     end
-
+    
     ax_ = gca;
     variableNames = {'Supercluster','Nentries','Prc25','Med','Prc75','mu_minus_sd','mu','mu_plus_sd'};
     [Superclusters,figname] = multipleRegex( rc_obj.clustersTable.Clustertext, query );

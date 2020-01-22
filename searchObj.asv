@@ -1,0 +1,28 @@
+classdef searchObj
+    % Creating a search object
+    
+    properties
+        hits
+    end
+    
+    methods
+        function obj = searchObj(resultsClassObj, query, varargin)
+            
+            if strcmp(varargin{1}, 'sequenceByTrackIdx' )
+                
+                tosearch = structfun( @(x) x.sequenceByTrackIdx , resultsClassObj.sequencesTable, 'UniformOutput', false );
+
+            end
+            
+            for objs = fields(tosearch)'
+                
+                tosearch.(objs)
+                
+            end
+            
+            
+            
+        end        
+    end
+end
+

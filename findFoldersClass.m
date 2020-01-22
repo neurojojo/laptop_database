@@ -183,14 +183,24 @@ classdef findFoldersClass < handle
         
         % This was added 12/5 and needs to be more properly integrated
         function computeRelativeSegIdx(obj)
+
             obj.segs = structfun( @(x) obj.expand_DC_MSS_Segs(x), obj.segs,'ErrorHandler',@(x,y) obj.doNothing ,'UniformOutput',false);
+            
         end
         
         function output = expand_DC_MSS_Segs(obj,input_structure)
             try
-                toexpand = histc( input_structure.segsTable.trackIdx, [1:max(input_structure.segsTable.trackIdx)] );
-                input_structure.segsTable.segIdx_relative = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) );
-                input_structure.segsTable.segIdx_identifier = [ eq( diff( input_structure.segsTable.segIdx_relative,1 ), 0 ); 0 ];
+                toexpand = histc( input_structure.segsTable.trackIdx, [1:max(input_structure.segsTable.trackIdx)] ); % Find tracks with multiple segments (they will not be 1 entries in histogram)
+                input_structure.segsTable.segIdx_relative = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) ); % Give each segment its relative index
+                input_structure.segsTable.singleSegmentTrack_identifier = [ eq( diff( input_structure.segsTable.segIdx_relative,1 ), 0 ); 0 ];
+                
+                % This next line does a lot of work %
+                % Segment is the ONLY segment in a track: zero
+                % Segment is the FIRST segment in a track: negative one
+                % Segment is MIDDLE segment in a track: two
+                % Segment is the LAST segment in a track: positive one
+                
+                input_structure.segsTable.multiSegmentTrack_identifier = cell2mat( arrayfun( @(x) [repmat(ne(x,1),1,min(1,x)),repmat(2,1,x-2),repmat(-1,1,min(1,x-1))]', toexpand,'UniformOutput',false) );
                 output = input_structure;
             catch
                 output = input_structure;
@@ -249,7 +259,7 @@ classdef findFoldersClass < handle
             
             for I = myobjs'
                 thisObj = I{1};
-                % Currently this only workr two state models
+                % Currently this only works for two state models
                 if and( ~strcmp( obj.hmmsegs.(thisObj).metadata.Type, 'Error' ), isfield( obj.hmmsegs.(thisObj).brownianTable, 'State1' ) ); 
                     tmp = [ obj.hmmsegs.(thisObj).brownianTable.State1;obj.hmmsegs.(thisObj).brownianTable.State2];
                     segs = tmp.segIdx;
