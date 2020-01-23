@@ -1,0 +1,11 @@
+%% Patching OLD signeFolders 
+
+% Have to add segType to all of the hmmsegs brownianTables
+
+for i = fields(signeFolders.hmmsegs)'
+    
+   if ~isempty( signeFolders.hmmsegs.(i{1}).brownianTable )
+       tmp1 = signeFolders.hmmsegs.(i{1}).brownianTable.State1;
+       tmp2 = signeFolders.hmmsegs.(i{1}).brownianTable.State2;
+   end
+end

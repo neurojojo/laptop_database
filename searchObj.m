@@ -21,6 +21,7 @@ classdef searchObj  < handle
         grpcolors
         scs_order_cell
         grpcolors_cell
+        crossTable
     end
     
     properties( Access = private )
@@ -52,6 +53,10 @@ classdef searchObj  < handle
             tmp = cellfun( @(x) multipleRegex( resultsClassObj.clustersTable.Clustertext, x ), query, 'UniformOutput', false );
             obj.scs_order_cell = arrayfun( @(y) [1:y]', arrayfun(@(x) numel(x{1}), tmp ), 'UniformOutput', false );
             scs_order = cell2mat(arrayfun( @(y) [1:y]', arrayfun(@(x) numel(x{1}), tmp ), 'UniformOutput', false ));
+            
+            % Store a variable that keeps track of which search query
+            % produced the supercluser
+            query_order = cell2mat(arrayfun( @(x) repmat(x,1,numel(tmp{x})), [1:numel(tmp)] , 'UniformOutput', false))';
             
             count = 1;
             
@@ -85,7 +90,7 @@ classdef searchObj  < handle
                 %end
                 
                 obj.summarytable = [obj.summarytable ; table( ...
-                                                        repmat(count,numel(obj.sc_table{count}.Supercluster),1),...
+                                                        repmat(query_order(count),numel(obj.sc_table{count}.Supercluster),1),...
                                                         obj.sc_table{count}.Supercluster,...
                                                         obj.sc_table{count}.Shortname,...
                                                         obj.idx{count},...
@@ -111,20 +116,24 @@ classdef searchObj  < handle
             % BEGIN of summarylifetimes_sc %
             obj.summarylifetimes_sc = table( ...
                             scs_order,...
-                            arrayfun( @(x) unique(obj.summarytable( obj.summarytable.Supercluster==x,:).Shortname), unique(obj.summarytable.Supercluster) ),...
-                            arrayfun( @(x) nanmean( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg1 ), unique(obj.summarytable.Supercluster) ),...
-                            arrayfun( @(x) nanmean( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg2 ), unique(obj.summarytable.Supercluster) ),...
-                            arrayfun( @(x) nanstd( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg1 )/sqrt(numel(obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg1)), unique(obj.summarytable.Supercluster) ),...
-                            arrayfun( @(x) nanstd( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg2 )/sqrt(numel(obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg2)), unique(obj.summarytable.Supercluster) ));
+                            arrayfun( @(x) unique(obj.summarytable( obj.summarytable.Supercluster==x,:).Shortname), unique(obj.summarytable.Supercluster, 'stable') ),...
+                            arrayfun( @(x) nanmean( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg1 ), unique(obj.summarytable.Supercluster, 'stable') ),...
+                            arrayfun( @(x) nanmean( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg2 ), unique(obj.summarytable.Supercluster, 'stable') ),...
+                            arrayfun( @(x) nanstd( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg1 )/sqrt(numel(obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg1)), unique(obj.summarytable.Supercluster, 'stable') ),...
+                            arrayfun( @(x) nanstd( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg2 )/sqrt(numel(obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg2)), unique(obj.summarytable.Supercluster, 'stable') ),...
+                            arrayfun( @(x) sum(obj.summarytable(obj.summarytable.Supercluster==x,:).chi2_hmmseg1), unique(obj.summarytable.Supercluster, 'stable'), 'UniformOutput', true ),...
+                            arrayfun( @(x) sum(obj.summarytable(obj.summarytable.Supercluster==x,:).chi2_hmmseg2), unique(obj.summarytable.Supercluster, 'stable'), 'UniformOutput', true ));
             
                 
-            obj.summarylifetimes_sc.Properties.VariableNames = {'InClusterIdx','Shortname','Lifetime_S1','Lifetime_S2','SE_Lifetime_S1','SE_Lifetime_S2'};
+            obj.summarylifetimes_sc.Properties.VariableNames = {'InClusterIdx','Shortname','Lifetime_S1','Lifetime_S2','SE_Lifetime_S1','SE_Lifetime_S2','chi2_hmmseg1','chi2_hmmseg2'};
             
-            if eq( size(obj.summarylifetimes_sc,1), numel(sorting) )
-                obj.summarylifetimes_sc = obj.summarylifetimes_sc(sorting,:);
-                obj.summarylifetimes_sc.InClusterIdx = scs_order;
+            if exist('sorting')
+                if eq( size(obj.summarylifetimes_sc,1), numel(sorting) )
+                    obj.summarylifetimes_sc = obj.summarylifetimes_sc(sorting,:);
+                    obj.summarylifetimes_sc.InClusterIdx = scs_order;
+                end
             end
-                
+            
             % END of summarylifetimes_sc %
             
             obj.sc = scs';
@@ -142,7 +151,7 @@ classdef searchObj  < handle
            end
         end
         
-        function plot(obj)
+        function plot(obj, varargin)
             
             figure('color','w');
             my_ax = axes();
@@ -152,22 +161,83 @@ classdef searchObj  < handle
             Nrows = numel(obj.summarylifetimes_sc.Shortname);
             Nentries = arrayfun( @(x) numel(x{1}), obj.idx )';
             
-            crossTable = table( obj.summarylifetimes_sc.Shortname,...                                             %label
-                                Nentries,...                                                                      %Nentries
-                                (obj.summarylifetimes_sc.Lifetime_S1-obj.summarylifetimes_sc.SE_Lifetime_S1),...  %x0
-                                obj.summarylifetimes_sc.Lifetime_S1,...                                           %xcenter
-                                (obj.summarylifetimes_sc.Lifetime_S1+obj.summarylifetimes_sc.SE_Lifetime_S1),...  %x1
-                                (obj.summarylifetimes_sc.Lifetime_S2-obj.summarylifetimes_sc.SE_Lifetime_S2),...  %y0
-                                obj.summarylifetimes_sc.Lifetime_S2,...                                           %ycenter
-                                (obj.summarylifetimes_sc.Lifetime_S2+obj.summarylifetimes_sc.SE_Lifetime_S2),...  %y1
-                                obj.summarylifetimes_sc.InClusterIdx,...                                          %color
-                                nan(Nrows,1),...                                                                  %maxColor
-                                repmat(my_ax,Nrows,1),...                                                         %parent
-                                obj.summarylifetimes_sc.Shortname,...                                             %for the legend
-                                obj.grpcolors_cell );                                                             %colors
+            if nargin==1
+
+                obj.crossTable = table( obj.summarylifetimes_sc.Shortname,...                                             %label
+                                    Nentries,...                                                                      %Nentries
+                                    (obj.summarylifetimes_sc.Lifetime_S1-obj.summarylifetimes_sc.SE_Lifetime_S1),...  %x0
+                                    obj.summarylifetimes_sc.Lifetime_S1,...                                           %xcenter
+                                    (obj.summarylifetimes_sc.Lifetime_S1+obj.summarylifetimes_sc.SE_Lifetime_S1),...  %x1
+                                    (obj.summarylifetimes_sc.Lifetime_S2-obj.summarylifetimes_sc.SE_Lifetime_S2),...  %y0
+                                    obj.summarylifetimes_sc.Lifetime_S2,...                                           %ycenter
+                                    (obj.summarylifetimes_sc.Lifetime_S2+obj.summarylifetimes_sc.SE_Lifetime_S2),...  %y1
+                                    obj.summarylifetimes_sc.InClusterIdx,...                                          %color
+                                    nan(Nrows,1),...                                                                  %maxColor
+                                    repmat(my_ax,Nrows,1),...                                                         %parent
+                                    obj.summarylifetimes_sc.Shortname,...                                             %for the legend
+                                    obj.grpcolors_cell );                                                             %colors
+                obj.crossTable.Properties.VariableNames = {'Label','Nentries','x0','xcenter','x1','y0','ycenter','y1','Color','MaxColor','Parent','Legend','Palette'};
             
-            obj1 = rowfun( @crossObj, crossTable );
+            end
             
+            rowfun( @crossObj, obj.crossTable );
+            set(gca,'Xlim',[0,75],'YLim',[0,100],'TickDir','out');
+            set(gcf,'Position',[340,320,1230,470]);
+            xlabel('Fast state lifetime (frames)');
+            ylabel('Slow state lifetime (frames)');
+            textToTop(gca);
+            grid on;
+            
+        end
+        
+        
+        function plotchi2(obj, varargin)
+            
+            figure('color','w');
+            left_ax = subplot(1,2,1);
+            right_ax = subplot(1,2,2); 
+            set(left_ax, 'NextPlot','add');
+            set(right_ax, 'NextPlot','add');
+            
+            % Collect chi2_hmmseg1
+            chi2_hmmseg1 = arrayfun(@(x) sum(obj.summarytable( obj.summarytable.Supercluster==x,: ).chi2_hmmseg1), unique( obj.summarytable.Supercluster, 'stable' ) );
+            chi2_hmmseg2 = arrayfun(@(x) sum(obj.summarytable( obj.summarytable.Supercluster==x,: ).chi2_hmmseg2), unique( obj.summarytable.Supercluster, 'stable' ) );
+            N = arrayfun(@(x) numel((obj.summarytable( obj.summarytable.Supercluster==x,: ).chi2_hmmseg2)), unique( obj.summarytable.Supercluster, 'stable' ) );
+            
+            scs = unique( obj.summarytable.Supercluster, 'stable' );
+            legends = unique( obj.summarytable.Shortname, 'stable' );
+            
+            legends = rowfun( @(x,y) sprintf('%s (N=%i)',x{1},y), table( legends, N ), 'OutputFormat', 'cell' );
+            
+            legends
+            
+            colors = lines(100);
+            
+            % Left plot
+            arrayfun( @(x) plot( chi2_hmmseg1(x), chi2_hmmseg2(x) , '.', 'MarkerSize', 24, 'color', colors(x,:), 'parent', left_ax ), [1:numel(chi2_hmmseg1)] );
+            xlim([0,10]); ylim([0,10]);
+            line([0,10],[0,10], 'parent', left_ax );
+            xlabel('# of cells with non-exponential fast state distributions', 'parent', left_ax);
+            ylabel('# of cells with non-exponential fast state distributions', 'parent', left_ax);
+            table( chi2_hmmseg1, chi2_hmmseg2, legends )
+            %legend(legends)
+            rowfun( @(x,y,t) text( x+1, y, t{1} , 'parent', left_ax ), table( chi2_hmmseg1, chi2_hmmseg2, legends ) );
+            set(gcf, 'position', [140,320,1350,470] );
+            
+            % Right plot
+            
+            chi2_hmmseg1_pct = arrayfun(@(x) chi2_hmmseg1(x)/N(x), [1:numel(N)] )';
+            chi2_hmmseg2_pct = arrayfun(@(x) chi2_hmmseg2(x)/N(x), [1:numel(N)] )';
+            arrayfun( @(x) plot( chi2_hmmseg1_pct(x), chi2_hmmseg2_pct(x), '.', 'MarkerSize', 24, 'color', colors(x,:), 'parent', right_ax ), [1:numel(chi2_hmmseg1)] );
+            xlim([0,1]); ylim([0,1]);
+            line([0,1],[0,1], 'parent', right_ax );
+            xlabel('% of cells with non-exponential fast state distributions', 'parent', right_ax);
+            ylabel('% of cells with non-exponential slow state distributions', 'parent', right_ax);
+            table( chi2_hmmseg1, chi2_hmmseg2, legends )
+            legend(legends);
+            table( chi2_hmmseg1_pct, chi2_hmmseg2_pct, legends )
+            %rowfun( @(x,y,t) text( x+1, y, t{1} , 'parent', right_ax ), table( chi2_hmmseg1_pct, chi2_hmmseg2_pct, legends ) );
+            set(gcf, 'position', [140,320,1350,470] );
             
         end
         

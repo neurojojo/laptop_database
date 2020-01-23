@@ -10,6 +10,7 @@ function [hits,figname] = multipleRegex( cellarray, varargin )
         for i = 1:numel( queries )
 
             figname = [figname, ' ', queries{i}];
+            
             if regexpi( queries{i}, 'not')
                 removeflag = regexpi(queries{i},'(?<=not\s).*','match');
                 query = sprintf('^((?!%s).)*$', removeflag{1}); myre = @(x) numel( regexpi(x,query) ); 

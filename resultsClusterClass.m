@@ -459,6 +459,7 @@ classdef resultsClusterClass < handle
                 try
                     
                     if ~isempty( findFoldersObj.hmmsegs.(objectnames{1}).brownianTable )
+                        
                         tmp = sortrows( outerjoin( findFoldersObj.segs.(objectnames{1}).segsTable(:,[1,2,5]),...
                             [findFoldersObj.hmmsegs.(objectnames{1}).brownianTable.State1(:,[1,2,4,8]); findFoldersObj.hmmsegs.(objectnames{1}).brownianTable.State2(:,[1,2,4,8])],...
                             'Keys', {'trackIdx','segIdx'} ), {'trackIdx_left','segIdx_left','hmmSegStart'} );
@@ -516,6 +517,7 @@ classdef resultsClusterClass < handle
                     
                 catch
                    fprintf('Failed for %s\n',objectnames{1}); 
+                   fprintf('%s\n',lasterr);
 
                 end
             end

@@ -53,6 +53,7 @@ rc_obj.getConsolidatedLifetimes( signeFolders );
 rc_obj.computeSegInfo();
 rc_obj.makeDiffusionTable( signeFolders );
 rc_obj.consolidateSuperclusterLifetimes( signeFolders );
+
 rc_obj.getSequences( signeFolders );
 
 %%
