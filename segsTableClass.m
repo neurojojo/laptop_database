@@ -4,6 +4,7 @@ classdef segsTableClass < handle
     
     properties
         segsTable;
+        segsSummary;
         metadata;
     end
     
@@ -83,29 +84,75 @@ classdef segsTableClass < handle
             
         end
         
-        function plot(obj,trackId,varargin)
+        function getPositionStats(obj)
             
-            % Input parsing
-            hold = find(strcmp(varargin,'hold')==1);
+            if and( ~isempty( obj.segsTable ), not(any(cell2mat(strfind( obj.segsTable.Properties.VariableNames, 'max_x' )))));
+                output = cell2mat( rowfun( @(x,y) [ min(x{1}), nanmean(x{1}), max(x{1}), min(y{1}), nanmean(y{1}), max(y{1}) ] , obj.segsTable(:,{'xSeg','ySeg'}) ,'OutputFormat', 'cell') );
+                output = array2table(output,'VariableNames',{'min_x','mean_x','max_x','min_y','mean_y','max_y'} );
             
-            % Open windows parsing
-            trackPlotter_obj=findobj('Name','trackPlotter');
-            
-            if ~isempty(trackPlotter_obj) % The trackPlotter figure is open
-            else % Create the trackPlotter figure and an axis for it
-                trackPlotter_obj = figure('Name','trackPlotter');
-            end
-
-            if isempty(hold) % Hold behavior off
-                clf(trackPlotter_obj);
-                ax1 = axes('Parent',trackPlotter_obj,'nextplot','replacechildren');
-            else % Hold behavior on
-                ax1 = axes('Parent',trackPlotter_obj,'nextplot','add');
+                obj.segsTable = [ obj.segsTable, output ];
+                fprintf('Calculated position statistics\n');
             end
             
-            plot( ax1, obj.tracksTable(trackId,:).x{1}, obj.tracksTable(trackId,:).y{1} );
+            if ~isempty( obj.segsTable )
+                obj.segsSummary = table( min(table2array(obj.segsTable(:,{'min_x'}))),...
+                    min(table2array(obj.segsTable(:,{'min_y'}))),...
+                    max(table2array(obj.segsTable(:,{'max_x'}))),...
+                    max(table2array(obj.segsTable(:,{'max_y'}))), 'VariableNames', {'min_x','min_y','max_x','max_y'} );
+                fprintf('Calculated position summaries\n');
+            end
             
         end
+        
+        function plot(obj,segIdx,varargin)
+            
+           if nargin==1
+               segIdx = unique(obj.segsTable.segIdx);
+           end
+           
+           % Plot multiple tracks if they're present
+           segcolors = [1.0000,0.5843,0.8392; % 6th color in pinks (I)
+                        0.13,0.39,0.85; % 1st color in paleblues (C)
+                        0, 0.5882, 0.4333; % 1st color in palegreens (D)
+                        0, 0, 0; % Black (SuperD)
+                        .9,.9, 0]; 
+           these_segs_colors = obj.segsTable.segType+1; % Add one to bring index between 1:4
+           these_segs_colors( isnan(obj.segsTable.segType) ) = 5; % Allow NaNs to be plotted
+           titles = {'Immobile','Confined','Diffusing','Superdiffusing','NaNs'};
+           
+           sub_ax = arrayfun(@(x) subplot(1,5,x,'NextPlot','add'), [1:5] );
+           arrayfun(@(x) set(sub_ax(x),'Title',text(0,0,titles{x})), [1:5] );
+           if gt(numel( segIdx ),1)
+               %thisplot = arrayfun(@(thisIdx) plot( obj.segsTable(thisIdx,:).xSeg{1},...
+               %      obj.segsTable(thisIdx,:).ySeg{1}, 'color', segcolors(these_segs_colors(thisIdx),:),...
+               %      'Parent', sub_ax(these_segs_colors(thisIdx)) ), segIdx,...
+               %      'UniformOutput',false,'ErrorHandler', @(x,y) 0 ); 
+               thisplot = arrayfun(@(thisIdx) patch( obj.segsTable(thisIdx,:).xSeg{1},...
+                     obj.segsTable(thisIdx,:).ySeg{1}, [0,0,0], 'edgecolor', segcolors(these_segs_colors(thisIdx),:),...
+                     'FaceColor','none','EdgeAlpha',.1,'Parent', sub_ax(these_segs_colors(thisIdx)) ), segIdx,...
+                     'UniformOutput',false,'ErrorHandler', @(x,y) 0 );
+           % Gather y-lims and standardize
+           %axlims = cell2mat(arrayfun(@(x) [ get(sub_ax(x),'Xlim'), get(sub_ax(x),'Ylim') ], [1:5] , 'UniformOutput', false)');
+           %axlims = [ min(axlims(:,1),[],1), max(axlims(:,2),[],1), min(axlims(:,3),[],1), max(axlims(:,4),[],1) ]; % Minimize the xmin, ymin
+           arrayfun(@(x) set(sub_ax(x),'XLim',[obj.segsSummary.min_x,obj.segsSummary.max_x],...
+                                        'YLim',[obj.segsSummary.min_y,obj.segsSummary.max_y] ), [1:5] );
+           suptitle( obj.metadata.Fullname );
+           
+           else
+               
+               thisplot = plot( obj.segsTable(segIdx,:).x{1},...
+                     obj.segsTable(segIdx,:).y{1} ); 
+           end
+           
+           % Check for optional arguments
+           if ~isempty(varargin)
+                arrayfun( @(thisline) arrayfun( @(x) set( thisline, varargin{2*x-1}, varargin{2*x} ), [1:numel(varargin)/2] ), thisplot );
+           end
+           set(gca,'TickDir','out');
+           
+           
+        end
+        
         
         function head(obj,varargin)
             if nargin==1

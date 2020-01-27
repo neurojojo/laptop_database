@@ -224,6 +224,17 @@ classdef findFoldersClass < handle
             
         end
        
+        function calculatePositionStats(obj)
+            for i = fields( obj.segs )'
+                i
+                if ~isempty( obj.segs.(i{1}) )
+                    if ~isempty( obj.segs.(i{1}).segsTable )
+                    obj.segs.(i{1}).getPositionStats();
+                    end
+                end
+            end
+        end
+        
         function assignNames(obj)
             
             mynames = rowfun( @parseFilename, obj.subfolderTable );
@@ -231,6 +242,12 @@ classdef findFoldersClass < handle
             mynames = rowfun( @convertRowToStr, mynames );
             mynames = table( [1:numel(mynames)]', table2array( mynames ) , 'VariableNames', {'AbsoluteIdxToSubfolders','Shortname'} )
             obj.namesTable = mynames;
+            
+            for i = obj.namesTable.AbsoluteIdxToSubfolders'
+                if ~isempty( obj.segs.(sprintf('obj_%i',i)) )
+                    obj.segs.(sprintf('obj_%i',i)).metadata.Fullname = sprintf('%s (%i)', obj.namesTable(i,:).Shortname{1}, i);
+                end
+            end
             
         end
         
