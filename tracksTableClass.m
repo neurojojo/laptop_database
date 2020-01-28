@@ -205,7 +205,6 @@ classdef tracksTableClass < handle
                thisplot = arrayfun(@(thisIdx) plot( obj.tracksTable(thisIdx,:).x{1},...
                      obj.tracksTable(thisIdx,:).y{1} ), trackIdx ); 
            else
-               
                thisplot = plot( obj.tracksTable(trackIdx,:).x{1},...
                      obj.tracksTable(trackIdx,:).y{1} ); 
            end

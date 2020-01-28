@@ -71,6 +71,8 @@ classdef searchObj  < handle
                 obj.sc_string{count} = sprintf('%i. %s',count,obj.sc_table{count}(1,:).Shortname{1});
                 obj.mergedsegments{count} = arrayfun( @(x) resultsClassObj.mergedSegmentsTable.(sprintf('obj_%i',x))(:,{'trackIdx_left','segIdx_left','hmmSegIdx','segType_combined','Lifetime_seg','Lifetime_hmmseg','multiSegmentTrack_identifier'}), obj.sc_table{count}.AbsoluteIdxToSubfolders, 'UniformOutput', false, 'ErrorHandler', @(x,y) [] );
                 
+                % This part takes ONLY those hmm_states that are
+                % intermediate in a track (not beginning or ending)
                 obj.hmm_state1{count} = cellfun( @(x) x( and(x.multiSegmentTrack_identifier==2, x.segType_combined==101), : ).Lifetime_hmmseg, obj.mergedsegments{count}, 'UniformOutput', false, 'ErrorHandler', @(x,y) NaN );
                 obj.hmm_state2{count} = cellfun( @(x) x( and(x.multiSegmentTrack_identifier==2, x.segType_combined==102), : ).Lifetime_hmmseg, obj.mergedsegments{count}, 'UniformOutput', false, 'ErrorHandler', @(x,y) NaN  );
                 

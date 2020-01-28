@@ -295,7 +295,17 @@ classdef findFoldersClass < handle
             
         end
         
+        function getHMMsegLengths( obj )
+            structfun(@(x) getPositionStats(x), obj.hmmsegs, 'UniformOutput', false )
+        end
+        
         % House-keeping functions %
+        
+        function cleanUp( obj )
+            
+            structfun( @(x) addEmpty(x), obj.hmmsegs );
+            
+        end
         
         function varargout = doNothing(obj,varargin)
             varargout{1}=[];
