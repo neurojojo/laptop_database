@@ -3,6 +3,7 @@ classdef tracksTableClass < handle
     properties
        tracksTable;
        metadata;
+       trackBoundaries;
     end
     
     properties(GetAccess='private')
@@ -192,8 +193,52 @@ classdef tracksTableClass < handle
             
         end
         
-                
-        function plot(obj,trackIdx,varargin)
+        function getTrackBoundaries(obj)
+           
+            x_ = cell2mat(obj.tracksTable.x')';
+            y_ = cell2mat(obj.tracksTable.y')';
+            matrix = zeros(300,300);
+            locs_ = sub2ind([300,300],max(1,fix(x_)),max(1,fix(y_)));
+            matrix(locs_) = 1;
+
+            myim = imfill(matrix,'holes');
+            myimage = bwareafilt( logical(myim), 1 );
+            
+            [B,L] = bwboundaries( myimage );
+            obj.trackBoundaries = B{1};
+            
+        end
+        
+        function getCellHeatmap(obj, varargin)
+            
+            tracksTable = obj.tracksTable;
+            
+            % This is a map of the total track crossings at each pixel x,y
+            x_ = cell2mat(tracksTable.x')'; 
+            y_ = cell2mat(tracksTable.y')';
+
+            [obj.TrackHeatmap,~] = hist3( [ max(1,fix(x_)),max(1,fix(y_)) ], 'Ctrs',{0:1:300 0:1:300} );
+            figure('color','k'); imagesc(imfilter(a,fspecial('gaussian',3,1)),[0,prctile(a(:),99.9)]); colormap([0,0,0;hot(100)])
+            set(gca,'XColor','k','YColor','k');
+            
+        end
+        
+        function imagesc( obj )
+           
+            
+            
+        end
+        
+        function plot(obj,varargin)
+           
+           if any(cell2mat(strfind(varargin,'bounds')))
+               linecolor = 'k';
+               if any(cell2mat(strfind(varargin,'color')))
+                  linecolor = 'w'; 
+               end
+               plot( obj.trackBoundaries(:,2), obj.trackBoundaries(:,1), 'color', linecolor );
+               return
+           end
             
            if nargin==1
                trackIdx = unique(obj.tracksTable.id);

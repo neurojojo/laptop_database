@@ -84,8 +84,6 @@ classdef segsTableClass < handle
             
         end
         
-<<<<<<< HEAD
-=======
         function getPositionStats(obj)
             
             if and( ~isempty( obj.segsTable ), not(any(cell2mat(strfind( obj.segsTable.Properties.VariableNames, 'max_x' )))));
@@ -106,7 +104,7 @@ classdef segsTableClass < handle
             
         end
         
->>>>>>> 7e6a595420c87fe7953226d391aa9a12545de93c
+        
         function plot(obj,segIdx,varargin)
             
            if nargin==1

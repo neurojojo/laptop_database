@@ -300,6 +300,24 @@ classdef findFoldersClass < handle
             
         end
         
+        function getTrackStats( obj )
+        
+            for this_obj = fields( obj.tracks )'
+                
+                obj.tracks.(this_obj{1}).tracksTable.xstart = arrayfun( @(idx) obj.tracks.(this_obj{1}).tracksTable(idx,:).x{1}(1), ...
+                    [1:size(obj.tracks.(this_obj{1}).tracksTable,1)] )';
+                obj.tracks.(this_obj{1}).tracksTable.ystart = arrayfun( @(idx) obj.tracks.(this_obj{1}).tracksTable(idx,:).y{1}(1), ...
+                    [1:size(obj.tracks.(this_obj{1}).tracksTable,1)] )';
+                
+            end            
+            
+        end
+        
+        function getTrackBoundaries( obj )
+            
+            
+        end
+        
         function getTrackLengths( obj )
            
             % For all the objects in the structure %
