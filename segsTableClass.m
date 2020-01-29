@@ -4,6 +4,7 @@ classdef segsTableClass < handle
     
     properties
         segsTable;
+        segsSummary;
         metadata;
     end
     
@@ -83,6 +84,29 @@ classdef segsTableClass < handle
             
         end
         
+<<<<<<< HEAD
+=======
+        function getPositionStats(obj)
+            
+            if and( ~isempty( obj.segsTable ), not(any(cell2mat(strfind( obj.segsTable.Properties.VariableNames, 'max_x' )))));
+                output = cell2mat( rowfun( @(x,y) [ min(x{1}), nanmean(x{1}), max(x{1}), min(y{1}), nanmean(y{1}), max(y{1}) ] , obj.segsTable(:,{'xSeg','ySeg'}) ,'OutputFormat', 'cell') );
+                output = array2table(output,'VariableNames',{'min_x','mean_x','max_x','min_y','mean_y','max_y'} );
+            
+                obj.segsTable = [ obj.segsTable, output ];
+                fprintf('Calculated position statistics\n');
+            end
+            
+            if ~isempty( obj.segsTable )
+                obj.segsSummary = table( min(table2array(obj.segsTable(:,{'min_x'}))),...
+                    min(table2array(obj.segsTable(:,{'min_y'}))),...
+                    max(table2array(obj.segsTable(:,{'max_x'}))),...
+                    max(table2array(obj.segsTable(:,{'max_y'}))), 'VariableNames', {'min_x','min_y','max_x','max_y'} );
+                fprintf('Calculated position summaries\n');
+            end
+            
+        end
+        
+>>>>>>> 7e6a595420c87fe7953226d391aa9a12545de93c
         function plot(obj,segIdx,varargin)
             
            if nargin==1
@@ -131,6 +155,7 @@ classdef segsTableClass < handle
            
            
         end
+        
         
         function head(obj,varargin)
             if nargin==1
