@@ -6,7 +6,7 @@ function [hits,figname] = multipleRegex( cellarray, varargin )
         figname='all';
         return
     else
-        queries = varargin{1};
+        try; queries = varargin{1}{1}; catch; queries = varargin{1}; end
         for i = 1:numel( queries )
 
             figname = [figname, ' ', queries{i}];

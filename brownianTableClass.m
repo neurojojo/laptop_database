@@ -150,17 +150,57 @@ classdef brownianTableClass < handle
         % END CONSTRUCTOR FXN %
         %%%%%%%%%%%%%%%%%%%%%%%
         
-        function lifetimes = lifetimes(obj,state)
-           lifetimes = cellfun( @numel, obj.brownianTable.(sprintf('%s',state)).hmm_xSeg );
-        end
-     
-    function plot(obj,state1segIdx,state2segIdx,varargin)
+        
+        function getDistanceToBoundary( obj, boundary, varargin )
+            states = {'State1','State2'};
+            for state = states
+                
+                filter = find(obj.brownianTable.(state{1}).tracksInSeg>0);
+                
+                [x,y] = deal( obj.brownianTable.(state{1}).Centroid_x(filter,:), obj.brownianTable.(state{1}).Centroid_y(filter,:) );
+                Lifetime = obj.brownianTable.(state{1})(filter,:).Lifetime;
+                distances = pdist2( [boundary(:,1), boundary(:,2)], [x, y], 'Euclidean' );
+                [distance,location] = min(distances,[],1);
 
+                tmp_table = table( [1:numel(x)]',...
+                    x, y,...
+                    boundary(location',1), boundary(location',2),Lifetime,distance',...
+                    'VariableNames', {'Index','track_x','track_y','boundary_x','boundary_y','Lifetime','distance'} );
+                
+                obj.brownianTable.(sprintf('%s_%s',state{1},'boundaryDistanceTable')) = tmp_table;
+                
+                if nargin>2
+                    %figure; 
+                    %plot( boundary(:,1), boundary(:,2), 'r'); hold on; plot(x,y,'ro'); 
+                    %colors = jet(50);
+                    %rowfun( @(x0,y0,x1,y1,lt) line([x0,x1],[y0,y1], 'color', colors(min(50,ceil(lt)),:)), tmp_table(:,[2:6]) ); 
+                    %title(sprintf('%s',state{1}));
+                    figure;
+                    plot( boundary(:,1), boundary(:,2), 'r'); hold on; plot(x,y,'wo'); hold on;
+                    rowfun( @(x0,y0,lt) plot(x0,y0,'wo','MarkerFaceColor', colors(min(50,ceil(lt)),:)), tmp_table(:,[2:3,6]) );
+                    title(sprintf('%s',state{1}));
+                end
+                
+            end
+            
+        end
+        
+        
+    function plot(obj,state1segIdx,state2segIdx,varargin)
+        
+        if and(isempty(state1segIdx),isempty(state2segIdx))
+            state1segIdx = unique( obj.brownianTable.State1.segIdx );
+            state2segIdx = unique( obj.brownianTable.State2.segIdx );
+        end
+        
         % Input parsing
         hold_ = find(strcmp(varargin,'hold')==1);
 
         % Input parsing
         black = find(strcmp(varargin,'black')==1);
+        
+        % Input parsing
+        overlay = find(strcmp(varargin,'overlay')==1);
         
         % Open windows parsing
         trackPlotter_obj=findobj('Name','trackPlotter');
@@ -201,12 +241,21 @@ classdef brownianTableClass < handle
              'FaceColor','none','EdgeAlpha',.1,'Parent', sub_ax(2) ), state2segIdx,...
              'UniformOutput',false,'ErrorHandler', @(x,y) 0 ); 
                  
-                 
-       %subplot(1,2,1); hold on; set(gca,'TickDir', 'out'); thisplot = arrayfun(@(thisIdx) plot( obj.brownianTable.State1(obj.brownianTable.State1.segIdx==thisIdx,:).hmm_xSeg{1},...
-       %      obj.brownianTable.State1( obj.brownianTable.State1.segIdx==thisIdx,:).hmm_ySeg{1} ), state1segIdx, 'UniformOutput', false ); 
-       %subplot(1,2,2); hold on; set(gca,'TickDir', 'out'); thisplot = arrayfun(@(thisIdx) plot( obj.brownianTable.State2(obj.brownianTable.State2.segIdx==thisIdx,:).hmm_xSeg{1},...
-       %      obj.brownianTable.State2( obj.brownianTable.State2.segIdx==thisIdx,:).hmm_ySeg{1} ), state2segIdx, 'UniformOutput', false ); xlim([0,300]); ylim([0,300]);
-
+       if ~isempty(overlay)
+           figure('color','k');
+                    % Plot multiple tracks if they're present
+            one_ax = axis();
+            set(gca,'color', gca_color,'xcolor', lbl_color, 'ycolor', lbl_color, 'tickdir', 'out');
+       thisplot_state1 = arrayfun(@(thisIdx) patch( obj.brownianTable.State1(obj.brownianTable.State1.segIdx==thisIdx,:).hmm_xSeg{1},...
+             obj.brownianTable.State1( obj.brownianTable.State1.segIdx==thisIdx,:).hmm_ySeg{1}, [0,0,0], 'edgecolor', [1,1,1],...
+             'FaceColor','none','EdgeAlpha',.1,'Parent', gca ), state1segIdx,...
+             'UniformOutput',false,'ErrorHandler', @(x,y) 0 );
+       thisplot_state2 = arrayfun(@(thisIdx) patch( obj.brownianTable.State2(obj.brownianTable.State2.segIdx==thisIdx,:).hmm_xSeg{1},...
+             obj.brownianTable.State2( obj.brownianTable.State2.segIdx==thisIdx,:).hmm_ySeg{1}, [0,0,0], 'edgecolor', [.5,1,.5],...
+             'FaceColor','none','EdgeAlpha',.1,'Parent', gca ), state2segIdx,...
+             'UniformOutput',false,'ErrorHandler', @(x,y) 0 ); 
+       end
+       
     end
     
 
@@ -237,6 +286,10 @@ classdef brownianTableClass < handle
     function getPositionStats( obj )
         
         fprintf('%i\n', obj.metadata.obj_idx );
+        
+        if isempty( obj.brownianTable )
+            return % Abort if none of the state1 or state2 tables are present
+        end
         
         if gt( size( obj.brownianTable.State1,1 ), 0 )
             obj.brownianTable.State1.Lifetime = cellfun(@(x) numel(x), obj.brownianTable.State1.hmm_xSeg );

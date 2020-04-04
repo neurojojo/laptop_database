@@ -1,46 +1,88 @@
 classdef findFoldersClass < handle
+
+    % Demo:
+    %
+    % options.TLD = 'Z:/#BackupMicData';
+    % options.search_folder = '_SM';
+    % options.search_subfolder = 'analysis_output.mat';
+    % options.optional_args = {'FilesToFind','signe'};
+    % tic; signeFolders = findFoldersClass(options); toc;
+    %
+    % signeFolders.makeTrackObjs;
+    % signeFolders.makeSegObjs; 
+    % signeFolders.makeHMMSegObjs;
+    %
+    % To parse filenames:
+    % signeFolders.assignNames();
+    %
+    % Extra processing for HMM:
+    % signeFolders.switchHMMstates;
+    % signeFolders.patchTracks;
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Constructor method takes one structure as an argument (options)         %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    %   options fields:
+    %       TLD: The top level directory where all folders are located
+    %           search_folder: This specifies the text of the FOLDERS to return
+    %           ie. "_SM_" will return all folders containing those initials
+    %       search_subfolder: This specifies the FILENAME to look for within the
+    %           subfolders, and will return a table with locations to every such
+    %           filename (use analysis_output.m for Bayesian, results.m for
+    %           Tracking, etc)
+    %       savelocation: This specifies the location to save the tables that
+    %           are output
+    %       optional_args: Goes only to makeTrackObjs and makeHMMSegObjs
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %   In-place methods:                                                    %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %
+    %       .makeTrackObjs() produces tracks from Tracking.m files
+    %       .makeSegObjs() produces segs from results.m files
+    %       [HMM only] .makeHMMSegObjs() produces hmmsegs from 
+    %       [HMM only] .switchHMMstates() goes into each hmmsegs object and determines
+    %       whether to switch the data in the State1 and State2 fields
+    %
     
     properties
-        folderTable;
-        subfolderTable;
-        trackingParametersTable;
-        metadata;
+        % DATA containing Tracking output
         tracks = struct();
-        segs = struct();
+        % DATA containg DC-MSS output
+        segs = struct(); 
+        % DATA containing Bayesian output
         hmmsegs = struct();
+        
+        % CELL ARRAY containing top-level directories containing each cell
+        folderTable;
+        
+        % TABLE containing directories from within each top-level directory
+        subfolderTable;
+        
+        % TABLE containing all of the parameters (first call collectParameters function)
+        trackingParametersTable;
+        
+        % Creates readable names for the subfolders (first call assignNames and *CUSTOM* parseFilename.m)
         namesTable;
+        
+        % A structure with two fields (options and logs)
+        metadata;
+            % options: TLD, search_folder, search_subfolder, optional_args
+            % logs: tracks,segs,hmmsegs (output of loading)
+        
     end
     
     properties(Constant)
-        Nstates = 2; % For the HMM
-        nparams = 18;
+        
+        Nstates = 2; % This will inform the hmmsegs routines about the number of states being parsed, if no Bayesian or HMM analysis has been done then this can be ignored
+        nparams = 18; % Deprecate eventually, currently gives you a table
+        
     end
-    
-    % Constructor method takes one structure as an argument (options)
-    %
-    % options fields:
-    %   TLD: The top level directory where all folders are located
-    %   search_folder: This specifies the text of the FOLDERS to return
-    %       ie. "_SM_" will return all folders containing those initials
-    %   search_subfolder: This specifies the FILENAME to look for within the
-    %       subfolders, and will return a table with locations to every such
-    %       filename (use analysis_output.m for Bayesian, results.m for
-    %       Tracking, etc)
-    %   savelocation: This specifies the location to save the tables that
-    %       are output
-    %   optional_args: Goes only to makeTrackObjs and makeHMMSegObjs
-    %
-    % In-place methods:
-    %   .saveTables() saves allfolders_date.mat to a options.savelocation
-    %   .makeTrackObjs() produces tracks from Tracking.m files
-    %   .makeSegObjs() produces segs from results.m files
-    %   .makeHMMSegObjs() produces hmmsegs from 
-    %   .switchHMMstates() goes into each hmmsegs object and determines
-    %   whether to switch the data in the State1 and State2 fields
     
     methods
         function obj = findFoldersClass(options)
-            
+% Constructor function            
             TLD = options.TLD;
             folder_regexpstring = options.search_folder;
             file_regexpstring = options.search_subfolder;
@@ -48,6 +90,7 @@ classdef findFoldersClass < handle
             obj.metadata.options = options;
 
             ALL_files=dir(TLD);
+            
             % Restrict to DIRECTORIES:
             ALL_files=ALL_files( arrayfun( @(x) and( gt(numel(x.name),2), x.isdir ), ALL_files ), : );
             
@@ -86,20 +129,9 @@ classdef findFoldersClass < handle
             obj.subfolderTable.Properties.VariableNames={'Name'};
             
         end
-
-        function saveTables(obj,varargin)
-        
-            if nargin>1; mystr = sprintf('_%s_',varargin{1}); else mystr=''; end
-            save( sprintf('allfolders%s_%s.mat',mystr,date), 'obj' );
-        
-        end
         
         function collectParameters(obj)
-            
-            % Outputs trackingParametersTable
-            
-            % We need to have found a tracking file, so each
-            % tracksTableClass object will have parameters
+% Creates trackingParametersTable (We need to have found a tracking file, so every tracksTableClass object will have parameters)
             %
             % The best way to locate these tracking files is through the
             % linked metadata within each tracks object
@@ -133,7 +165,8 @@ classdef findFoldersClass < handle
             %1
         
         function switchHMMstates(obj)
-            
+% This function checks whether the metadata containing the diffusion coefficient requires the diffusion states to be switched, switchDC will be added to the metadata if data from state1 was switched with data from state2
+
            mydiff = @(x) any( gt( diff(x.metadata.DiffCoeff), 0 )); % Is positive only if DC1 < DC2 
            % Our assumption is that DC1 should be > DC2
            toswitch = find( structfun( mydiff, obj.hmmsegs, 'UniformOutput', true ) == 1);
@@ -150,7 +183,7 @@ classdef findFoldersClass < handle
         end
         
         function makeTrackObjs(obj,varargin)
-            
+% Function that fills the tracks structure with tracksTableClass objects
             if nargin>1; mystr = varargin{1}; else; mystr = ''; end
             
             for i = 1:size(obj.subfolderTable)
@@ -169,6 +202,7 @@ classdef findFoldersClass < handle
         end
         
         function makeSegObjs(obj)
+% Function that fills the segs structure with segsTableClass objects
             for i = 1:size(obj.subfolderTable) % Leave where you left off power
                 try
                     tmp_ = segsTableClass( obj.tracks.(sprintf('obj_%i',i)), i, obj.metadata.options.optional_args );
@@ -181,14 +215,13 @@ classdef findFoldersClass < handle
             end
         end
         
-        % This was added 12/5 and needs to be more properly integrated
         function computeRelativeSegIdx(obj)
-
+% Runs expand_DC_MSS_Segs within each seg object
             obj.segs = structfun( @(x) obj.expand_DC_MSS_Segs(x), obj.segs,'ErrorHandler',@(x,y) obj.doNothing ,'UniformOutput',false);
-            
         end
         
         function output = expand_DC_MSS_Segs(obj,input_structure)
+% Runs from within computeRelativeSegIdx (currently runs within a try-catch-end) - identifies the segment in a segsTable as either being first, intermediate, or last
             try
                 toexpand = histc( input_structure.segsTable.trackIdx, [1:max(input_structure.segsTable.trackIdx)] ); % Find tracks with multiple segments (they will not be 1 entries in histogram)
                 input_structure.segsTable.segIdx_relative = cell2mat(arrayfun( @(x) [1:x]', toexpand,'UniformOutput',false ) ); % Give each segment its relative index
@@ -209,7 +242,7 @@ classdef findFoldersClass < handle
         % End of 12/5 additions
         
         function makeHMMSegObjs(obj)
-            
+% Function that fills the hmmsegs structure with brownianTableClass objects
             for i = 1:size(obj.subfolderTable) % Leave where you left off power
                 try
                     tmp_ = brownianTableClass( obj.segs.(sprintf('obj_%i',i)), i, '' );
@@ -225,18 +258,12 @@ classdef findFoldersClass < handle
         end
        
         function calculatePositionStats(obj)
-            for i = fields( obj.segs )'
-                i
-                if ~isempty( obj.segs.(i{1}) )
-                    if ~isempty( obj.segs.(i{1}).segsTable )
-                    obj.segs.(i{1}).getPositionStats();
-                    end
-                end
-            end
+% Runs segs subfunction (getPositionStats) which calculates min_x,mean_x,max_x,min_y,mean_y,mean_y,max_y,Lifetime for each segment
+            structfun( @(x) x.getPositionStats(), obj.segs, 'ErrorHandler', @(x,y) [] );
         end
         
         function assignNames(obj)
-            
+% Runs the custom parseFilename function on the subfolderTable and fills in namesTable with readable titles for each subfolder 
             mynames = rowfun( @parseFilename, obj.subfolderTable );
             mynames = struct2table( mynames.Var1 );
             mynames = rowfun( @convertRowToStr, mynames );
@@ -252,6 +279,7 @@ classdef findFoldersClass < handle
         end
         
         function clearTables(obj, varargin)
+% Removes brownianTableClass objects if an object number and reason for deletion are specified
             if nargin==3
                 objToClear = varargin{1};
                 comment = varargin{2};
@@ -271,7 +299,7 @@ classdef findFoldersClass < handle
         end
         
         function patchTracks(obj)
-            
+% Creates the tracksInSeg column of the State1 and State2 tables, containing the number in the sequence of that track (for the respective State)
             myobjs = fields( obj.hmmsegs );
             
             for I = myobjs'
@@ -294,64 +322,77 @@ classdef findFoldersClass < handle
                     catch
                         1
                     end
-                    
                 end
             end
             
         end
-        
-        function getTrackStats( obj )
-        
-            for this_obj = fields( obj.tracks )'
-                
-                obj.tracks.(this_obj{1}).tracksTable.xstart = arrayfun( @(idx) obj.tracks.(this_obj{1}).tracksTable(idx,:).x{1}(1), ...
-                    [1:size(obj.tracks.(this_obj{1}).tracksTable,1)] )';
-                obj.tracks.(this_obj{1}).tracksTable.ystart = arrayfun( @(idx) obj.tracks.(this_obj{1}).tracksTable(idx,:).y{1}(1), ...
-                    [1:size(obj.tracks.(this_obj{1}).tracksTable,1)] )';
-                
-            end            
-            
-        end
-        
+               
         function getTrackBoundaries( obj )
-            
-            
+% Calls on getTrackBoundaries from the tracksTableClass to output x,y positions of a mask encompassing all tracks, stored as a property of tracksTableClass (trackBoundaries)
+            structfun( @(x) x.getTrackBoundaries(), obj.tracks );
         end
+        
+        function getBoundaryStats( obj )
+% Calls getBoundaryStats on every object in the tracks structure, which retrieves the area and perimeter of a masked version of the track boundaries, stores the rest as a table in the boundaryStats property
+            structfun( @(x) x.getBoundaryStats(), obj.tracks, 'ErrorHandler', @(x,y) table(nan,nan,'VariableNames',{'Area','Perimeter'} ), 'UniformOutput', false);
+        end
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Length parsing functions %
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function getTrackLengths( obj )
-           
-            % For all the objects in the structure %
-            for this_obj = fields( obj.tracks )'
-                
-                obj.tracks.(this_obj{1}).tracksTable.trackLength = arrayfun( @(idx) numel( obj.tracks.(this_obj{1}).tracksTable(idx,:).x{1} ), ...
-                    [1:size(obj.tracks.(this_obj{1}).tracksTable,1)] )';
-                
-            end
-            
+% Computes the lifetime for every object in the tracks structure
+            structfun( @(x) x.getTrackLengths(), obj.tracks, 'ErrorHandler', @(x,y) [] );
+        end
+        
+        function getSegLengths( obj )
+% Computes the lifetime for every object in the segs structure
+            structfun( @(x) x.getSegLengths(), obj.segs, 'ErrorHandler', @(x,y) [] );
         end
         
         function getHMMsegLengths( obj )
-            structfun(@(x) getPositionStats(x), obj.hmmsegs, 'UniformOutput', false )
+% Computes the lifetime for every HMM object in the hmmsegs structure
+            structfun(@(x) getPositionStats(x), obj.hmmsegs, 'ErrorHandler', @(x,y) [] )
         end
         
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Data aggregation functions %
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        function varargout = gather_boundaryStats( obj )
+% Returns two vectors: the area and perimeter of tracks and places them into two cells (varargout 1 and 2) (takes no arguments)
+            result = struct2array(structfun( @(x) [x.boundaryStats.Area,x.boundaryStats.Perimeter], obj.tracks,...
+                'UniformOutput', false, 'ErrorHandler', @(x,y) [nan,nan]));
+            result = reshape( result, 2, numel(result)/2 )';
+            varargout{1} = result(:,1); %Area
+            varargout{2} = result(:,2); %Perimeter
+        end
+      
+        function result = gather_trackDensity( obj )
+% Returns a vector: density of tracks (which is the # of rows in tracksTable divided by the boundaryStats.Area) (takes no arguments)
+            result = struct2array(structfun( @(x) size(x.tracksTable,1)/x.boundaryStats.Area, obj.tracks,...
+                'UniformOutput', false, 'ErrorHandler', @(x,y) nan));
+        end
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%        
         % House-keeping functions %
-        
-        function cleanUp( obj )
-            
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        function cleanUp( obj ) % (no arguments)
+% Runs brownianTableClass function addEmpty to the hmmsegs structure
             structfun( @(x) addEmpty(x), obj.hmmsegs );
-            
         end
         
-        function varargout = doNothing(obj,varargin)
+        function varargout = doNothing(obj) % (no arguments)
+% Deprecated function that returns empty
             varargout{1}=[];
         end
         
-        function varargout = returnNaN(obj,varargin)
+        function varargout = returnNaN(obj,varargin) % (one argument: length of nan array)
+% Function that returns nan's with length specified in varargin{1}
             varargout{1}=repmat(NaN,1,varargin{1});
         end
-        
-        % Overloaded functions %
-
         
     end
     

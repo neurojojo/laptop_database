@@ -2,6 +2,8 @@ classdef searchObj  < handle
     % Creating a search object
     
     properties
+        Shortname
+        Indices
         sc_string
         sc
         sc_table
@@ -27,10 +29,16 @@ classdef searchObj  < handle
     properties( Access = private )
     end
     
+    % Use cases:
+    
+    % 
+    % 
+    % 
     methods
         function obj = searchObj(resultsClassObj, query, varargin)
             
             if nargin>2
+                
                 if strcmp(varargin{1}, 'sequenceByTrackIdx' )
                     tosearch = structfun( @(x) x.sequenceByTrackIdx , resultsClassObj.sequencesTable, 'UniformOutput', false );
                     for objs = fields(tosearch)'
@@ -47,12 +55,13 @@ classdef searchObj  < handle
             end
             
             % Check if it's a textual query
-            scs = cell2mat(cellfun( @(x) multipleRegex( resultsClassObj.clustersTable.Clustertext, x ), query, 'UniformOutput', false ));
+            scs = cell2mat( cellfun( @(x) multipleRegex( resultsClassObj.clustersTable.Clustertext, {x} ),...
+                query, 'UniformOutput', false )' );
             
             % Store a variable for the summary which contains the index
-            tmp = cellfun( @(x) multipleRegex( resultsClassObj.clustersTable.Clustertext, x ), query, 'UniformOutput', false );
+            tmp = cellfun( @(x) multipleRegex( resultsClassObj.clustersTable.Clustertext, {x} ), query, 'UniformOutput', false );
             obj.scs_order_cell = arrayfun( @(y) [1:y]', arrayfun(@(x) numel(x{1}), tmp ), 'UniformOutput', false );
-            scs_order = cell2mat(arrayfun( @(y) [1:y]', arrayfun(@(x) numel(x{1}), tmp ), 'UniformOutput', false ));
+            scs_order = cell2mat(arrayfun( @(y) [1:y]', arrayfun(@(x) numel(x{1}), tmp ), 'UniformOutput', false )');
             
             % Store a variable that keeps track of which search query
             % produced the supercluser
@@ -102,8 +111,7 @@ classdef searchObj  < handle
                                                         cellfun( @(x) nanmean( x ), obj.hmm_state2{count} ),...
                                                         cell2mat(cellfun( @(x) chi2gof( x, 'CDF', makedist('Exponential',nanmean(x)) ), obj.hmm_state1{count}, 'ErrorHandler', @(x,y) 0, 'UniformOutput', false )),...
                                                         cell2mat(cellfun( @(x) chi2gof( x, 'CDF', makedist('Exponential',nanmean(x)) ), obj.hmm_state2{count}, 'ErrorHandler', @(x,y) 0, 'UniformOutput', false )))];
-                
-               %obj.summarytable_by_sc = 
+               
                 count=count+1;
                 
             end
@@ -117,7 +125,7 @@ classdef searchObj  < handle
             
             % BEGIN of summarylifetimes_sc %
             obj.summarylifetimes_sc = table( ...
-                            scs_order,...
+                            unique(obj.summarytable.Supercluster, 'stable'),...
                             arrayfun( @(x) unique(obj.summarytable( obj.summarytable.Supercluster==x,:).Shortname), unique(obj.summarytable.Supercluster, 'stable') ),...
                             arrayfun( @(x) nanmean( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg1 ), unique(obj.summarytable.Supercluster, 'stable') ),...
                             arrayfun( @(x) nanmean( obj.summarytable( obj.summarytable.Supercluster==x,:).Mean_hmmseg2 ), unique(obj.summarytable.Supercluster, 'stable') ),...
@@ -139,6 +147,8 @@ classdef searchObj  < handle
             % END of summarylifetimes_sc %
             
             obj.sc = scs';
+            obj.Shortname = obj.summarytable.Shortname;
+            obj.Indices = obj.summarytable.AbsoluteIdxToSubfolders;
             
         end
         

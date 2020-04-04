@@ -4,7 +4,6 @@ classdef segsTableClass < handle
     
     properties
         segsTable;
-        segsSummary;
         metadata;
     end
     
@@ -85,21 +84,15 @@ classdef segsTableClass < handle
         end
         
         function getPositionStats(obj)
-            
+% Calculates min_x,mean_x,max_x,min_y,mean_y,mean_y,max_y,Lifetime for each segment            
             if and( ~isempty( obj.segsTable ), not(any(cell2mat(strfind( obj.segsTable.Properties.VariableNames, 'max_x' )))));
-                output = cell2mat( rowfun( @(x,y) [ min(x{1}), nanmean(x{1}), max(x{1}), min(y{1}), nanmean(y{1}), max(y{1}) ] , obj.segsTable(:,{'xSeg','ySeg'}) ,'OutputFormat', 'cell') );
-                output = array2table(output,'VariableNames',{'min_x','mean_x','max_x','min_y','mean_y','max_y'} );
+                output = cell2mat( rowfun( @(x,y) [ min(x{1}), nanmean(x{1}), max(x{1}), min(y{1}), nanmean(y{1}), max(y{1}), numel(x{1}) ] , obj.segsTable(:,{'xSeg','ySeg'}) ,'OutputFormat', 'cell') );
+                output = array2table(output,'VariableNames',{'min_x','mean_x','max_x','min_y','mean_y','max_y', 'Lifetime'} );
             
-                obj.segsTable = [ obj.segsTable, output ];
+                [obj.segsTable.min_x,obj.segsTable.mean_x,obj.segsTable.max_x] = deal( output.min_x,output.mean_x,output.max_x );
+                [obj.segsTable.min_y,obj.segsTable.mean_y,obj.segsTable.max_y] = deal( output.min_y,output.mean_y,output.max_y );
+                obj.segsTable.Lifetime = output.Lifetime;
                 fprintf('Calculated position statistics\n');
-            end
-            
-            if ~isempty( obj.segsTable )
-                obj.segsSummary = table( min(table2array(obj.segsTable(:,{'min_x'}))),...
-                    min(table2array(obj.segsTable(:,{'min_y'}))),...
-                    max(table2array(obj.segsTable(:,{'max_x'}))),...
-                    max(table2array(obj.segsTable(:,{'max_y'}))), 'VariableNames', {'min_x','min_y','max_x','max_y'} );
-                fprintf('Calculated position summaries\n');
             end
             
         end

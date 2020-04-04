@@ -622,7 +622,10 @@ classdef resultsClusterClass < handle
         function makeBoxplot( obj, data )
             
             figure('color','w');
-            appended_table = table( data,obj.subfoldersTable.Supercluster,obj.subfoldersTable.Shortname, 'VariableNames', {'Data','Supercluster','Shortname'} );
+            % Ensure sorting by absoluteidx
+            mysubfolderstable = sortrows(obj.subfoldersTable,'AbsoluteIdxToSubfolders');
+            
+            appended_table = table( data,mysubfolderstable.Supercluster,mysubfolderstable.Shortname, 'VariableNames', {'Data','Supercluster','Shortname'} );
             
             grps = unique( appended_table.Supercluster );
             grpmeans = arrayfun( @(x) nanmedian( appended_table( appended_table.Supercluster == x, : ).Data ), grps );
